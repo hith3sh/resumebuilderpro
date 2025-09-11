@@ -16,41 +16,9 @@ import {
 } from "@/components/ui/dialog";
 
 const ProfilePage = () => {
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
-        
-        setProfile(data);
-      } catch (error) {
-        toast({
-          title: "Error fetching profile",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [user, toast]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -91,7 +59,7 @@ const ProfilePage = () => {
     </DialogContent>
   );
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-16 w-16 animate-spin text-pr-blue-600" />

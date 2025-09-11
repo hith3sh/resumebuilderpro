@@ -1,5 +1,5 @@
-const ECOMMERCE_API_URL = "https://api-ecommerce.hostinger.com";
-const ECOMMERCE_STORE_ID = "store_01K4DPQJ4NFMCNQKW5KEFCG2GA";
+const ECOMMERCE_API_URL = import.meta.env.VITE_ECOMMERCE_API_URL;
+const ECOMMERCE_STORE_ID = import.meta.env.VITE_ECOMMERCE_STORE_ID;
 
 export const formatCurrency = (priceInCents, currencyInfo) => {
 	if (!currencyInfo || priceInCents === null || priceInCents === undefined) {

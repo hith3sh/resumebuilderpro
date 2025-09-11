@@ -1,9 +1,11 @@
 ## Pages
 - [- ProResume Designs](/productdetail): No description available
 - [Admin Dashboard - ProResume Designs](/admindashboard): No description available
+- [Checkout - ProResume Designs](/checkout): Complete your purchase for ProResume Designs services.
 - [Client Testimonials - ProResume Designs](/testimonials): Read success stories from thousands of professionals who landed their dream jobs with help from ProResume Designs. See what our clients are saying.
 - [Contact Us - ProResume Designs](/contact): Have a question? Get in touch with the ProResume Designs team. We
 - [Disclaimer - ProResume Designs](/disclaimer): Disclaimer for ProResume Designs
+- [Enhanced Admin Dashboard - ProResume Designs](/enhancedadmindashboard): No description available
 - [Information Submitted - ProResume Designs](/success): Thank you for submitting your information.
 - [Job Advice Blog - ProResume Designs](/jobadvice): Get the latest job search tips, resume advice, and career guidance from the experts at ProResume Designs. Our blog helps you stay ahead in your career.
 - [Login - ProResume Designs](/login): Access your ProResume Designs customer portal.

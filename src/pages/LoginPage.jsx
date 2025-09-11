@@ -34,7 +34,7 @@ const LoginPage = () => {
     setCooldown(60);
 
     try {
-      const redirectTo = `${window.location.origin}/profile`;
+      const redirectTo = import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/profile`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email: email,

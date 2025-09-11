@@ -13,7 +13,7 @@ import SuccessPage from '@/pages/SuccessPage';
 import QuestionnairePage from '@/pages/QuestionnairePage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ContactPage from '@/pages/ContactPage';
-import AdminDashboardPage from '@/pages/AdminDashboardPage';
+import EnhancedAdminDashboardPage from '@/pages/EnhancedAdminDashboardPage';
 import AdminProtectedRoute from '@/components/AdminProtectedRoute';
 import TermsOfServicePage from '@/pages/TermsOfServicePage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
@@ -46,7 +46,7 @@ function App() {
               path="admin"
               element={
                 <AdminProtectedRoute>
-                  <AdminDashboardPage />
+                  <EnhancedAdminDashboardPage />
                 </AdminProtectedRoute>
               }
             />
