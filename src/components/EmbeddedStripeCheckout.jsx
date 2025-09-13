@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { loadStripe } from '@stripe/stripe-js';
 import {
   EmbeddedCheckoutProvider,
@@ -22,11 +22,20 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
     
     try {
       // Get the current session to ensure we have a valid token
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (!session) {
-        throw new Error('User not authenticated');
+      console.log('Session check:', { 
+        hasSession: !!session, 
+        hasUser: !!session?.user, 
+        sessionError,
+        accessToken: session?.access_token?.substring(0, 20) + '...' 
+      });
+      
+      if (sessionError || !session || !session.access_token) {
+        throw new Error('User not authenticated - no valid session');
       }
+
+      console.log('Making request to create-checkout-session with auth header');
 
       // Create a Checkout Session via our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
@@ -44,8 +53,8 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
       });
 
       if (error) {
-        console.error('Error creating checkout session:', error);
-        setError(`Failed to create checkout session: ${error.message}`);
+        console.error('Supabase function error details:', error);
+        setError(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
         throw error;
       }
 
@@ -93,15 +102,20 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
     );
   }
 
-  // Create a stable key based on essential checkout data and client secret state
-  const checkoutKey = `checkout-${totalAmount}-${items.map(i => `${i.product_id}-${i.quantity || 1}`).join('-')}-${clientSecret || 'no-secret'}`;
+  // Create a stable fetchClientSecret function using useMemo
+  const stableFetchClientSecret = useMemo(() => {
+    return fetchClientSecret;
+  }, [items, totalAmount, JSON.stringify(metadata)]);
+
+  // Create a stable key based on essential checkout data
+  const checkoutKey = `checkout-${totalAmount}-${items.map(i => `${i.product_id}-${i.quantity || 1}`).join('-')}`;
 
   return (
     <div className="rounded-lg overflow-hidden">
       <EmbeddedCheckoutProvider
         key={checkoutKey}
         stripe={stripePromise}
-        options={{ fetchClientSecret }}
+        options={{ fetchClientSecret: stableFetchClientSecret }}
       >
         <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
