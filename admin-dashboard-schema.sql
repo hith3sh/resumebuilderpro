@@ -93,7 +93,7 @@ CREATE POLICY "Admin only access to visitor stats" ON public.visitor_stats
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
--- 7. Create dashboard summary view
+-- 7. Create dashboard summary view with RLS
 CREATE OR REPLACE VIEW public.admin_dashboard_summary AS
 SELECT 
     -- User Statistics
@@ -116,6 +116,15 @@ SELECT
     -- Visitor Statistics (if tracking implemented)
     (SELECT COALESCE(SUM(unique_visitors), 0) FROM public.visitor_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days') as visitors_30d,
     (SELECT COALESCE(SUM(page_views), 0) FROM public.visitor_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days') as pageviews_30d;
+
+-- Enable RLS on the view and create admin-only policy
+ALTER VIEW public.admin_dashboard_summary SET (security_invoker = on);
+
+DROP POLICY IF EXISTS "Admin only access to dashboard summary" ON public.admin_dashboard_summary;
+CREATE POLICY "Admin only access to dashboard summary" ON public.admin_dashboard_summary
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
 
 -- 8. Create function to get recent orders
 DROP FUNCTION IF EXISTS public.get_recent_orders(INTEGER);
