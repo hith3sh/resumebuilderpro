@@ -93,8 +93,8 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
     );
   }
 
-  // Create a stable key based on essential checkout data
-  const checkoutKey = `checkout-${totalAmount}-${items.map(i => `${i.product_id}-${i.quantity || 1}`).join('-')}`;
+  // Create a stable key based on essential checkout data and client secret state
+  const checkoutKey = `checkout-${totalAmount}-${items.map(i => `${i.product_id}-${i.quantity || 1}`).join('-')}-${clientSecret || 'no-secret'}`;
 
   return (
     <div className="rounded-lg overflow-hidden">
