@@ -4,7 +4,8 @@ import { FileText, Layers, Award, Check, X, Loader2, AlertCircle } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
-import { getProducts, formatCurrency } from '@/api/EcommerceApi';
+import { getProducts } from '@/api/ProductsApi';
+import { formatCurrency } from '@/api/StripeApi';
 
 const ServiceCard = ({ service, index }) => {
   const { toast } = useToast();
@@ -49,9 +50,13 @@ const ServiceCard = ({ service, index }) => {
         <p className={`${isPopular ? 'text-pr-blue-100' : 'text-gray-600'} mb-4 flex-grow min-h-[72px]`}>{service.description}</p>
         
         <div className="flex items-baseline mb-6">
-          <span className={`text-4xl font-bold ${isPopular ? 'text-white' : 'text-pr-blue-600'}`}>${service.displayPrice.replace('€', '')}</span>
+          <span className={`text-4xl font-bold ${isPopular ? 'text-white' : 'text-pr-blue-600'}`}>
+            {service.displayPrice}
+          </span>
           {hasSale && (
-            <span className={`text-lg line-through ml-2 ${isPopular ? 'text-pr-blue-200' : 'text-gray-400'}`}>${service.originalPrice.replace('€', '')}</span>
+            <span className={`text-lg line-through ml-3 ${isPopular ? 'text-pr-blue-200' : 'text-gray-400'}`}>
+              {service.originalPrice}
+            </span>
           )}
         </div>
 
@@ -105,6 +110,7 @@ const Services = () => {
         { text: "Boosted recruiter visibility", included: true },
         { text: "Increased interview opportunities", included: true },
       ],
+      matchWith: "Basic Resume", // Direct match with database product name
     },
     {
       icon: Layers,
@@ -118,6 +124,7 @@ const Services = () => {
         { text: "Boosted recruiter visibility", included: true },
         { text: "Increased interview opportunities", included: true },
       ],
+      matchWith: "Resume + Cover Letter", // Direct match with database product name
     },
     {
       icon: Award,
@@ -131,6 +138,7 @@ const Services = () => {
         { text: "Boosted recruiter visibility", included: true },
         { text: "Increased interview opportunities", included: true },
       ],
+      matchWith: "Full Branding Package", // Direct match with database product name
     }
   ], []);
 
@@ -141,26 +149,42 @@ const Services = () => {
         setError(null);
         const { products } = await getProducts();
         
+        // Debug: Log products to see if original_price_cents is included
+        console.log('Products from API:', products);
+        
         const productsMap = new Map(products.map(p => [p.title, p]));
 
         const mappedServices = serviceTemplates.map(template => {
-          const product = productsMap.get(template.title);
+          const product = productsMap.get(template.matchWith);
           if (product) {
-            const variant = product.variants[0];
-            const hasSale = variant && variant.sale_price_in_cents !== null;
-            const displayPrice = formatCurrency(hasSale ? variant.sale_price_in_cents : variant.price_in_cents, product.currency);
-            const originalPrice = hasSale ? formatCurrency(variant.price_in_cents, product.currency) : null;
+            console.log(`Product ${template.matchWith}:`, {
+              price_in_cents: product.price_in_cents,
+              original_price_cents: product.original_price_cents,
+              hasOriginalPrice: !!product.original_price_cents
+            });
+            
+            const displayPrice = formatCurrency(product.price_in_cents, product.currency);
+            const originalPrice = product.original_price_cents 
+              ? formatCurrency(product.original_price_cents, product.currency)
+              : null;
+            const hasSale = product.original_price_cents && product.original_price_cents > product.price_in_cents;
+
+            console.log(`Mapped service ${template.matchWith}:`, {
+              displayPrice,
+              originalPrice,
+              hasSale
+            });
 
             return {
               ...template,
               productId: product.id,
               displayPrice,
               originalPrice,
-              salePrice: hasSale ? displayPrice : null,
+              salePrice: hasSale ? product.price_in_cents : null,
               description: product.subtitle || template.description,
             };
           }
-          return { ...template, productId: null, displayPrice: 'N/A', originalPrice: null };
+          return { ...template, productId: null, displayPrice: 'N/A', originalPrice: null, salePrice: null };
         });
 
         // Sort services by price (lowest to highest)
@@ -173,7 +197,7 @@ const Services = () => {
         setServices(sortedServices);
       } catch (err) {
         setError(err.message || 'Failed to load services.');
-        setServices(serviceTemplates.map(t => ({ ...t, productId: null, displayPrice: 'Error', originalPrice: null })));
+        setServices(serviceTemplates.map(t => ({ ...t, productId: null, displayPrice: 'Error', originalPrice: null, salePrice: null })));
       } finally {
         setLoading(false);
       }

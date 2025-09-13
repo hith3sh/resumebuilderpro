@@ -3,25 +3,17 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check, ArrowRight } from 'lucide-react';
-import { getProducts, getProductQuantities, formatCurrency } from '@/api/EcommerceApi';
+import { getProducts } from '@/api/ProductsApi';
+import { formatCurrency } from '@/api/StripeApi';
 
 const placeholderImage = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjY2Y5ZWZmIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzQzMzk4MiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K";
 
 const ProductCard = ({ product, index }) => {
-  const isPopular = product.title === 'Resume + Cover Letter';
-  const displayVariant = useMemo(() => product.variants[0], [product]);
-  const hasSale = useMemo(() => displayVariant && displayVariant.sale_price_in_cents !== null, [displayVariant]);
-  const displayPrice = useMemo(() => formatCurrency(hasSale ? displayVariant.sale_price_in_cents : displayVariant.price_in_cents, product.currency), [product, displayVariant, hasSale]);
-  const originalPrice = useMemo(() => hasSale ? formatCurrency(displayVariant.price_in_cents, product.currency) : null, [product, displayVariant, hasSale]);
+  const isPopular = product.title === 'Premium Resume Rewrite';
+  const displayPrice = useMemo(() => formatCurrency(product.price_in_cents, product.currency), [product]);
   const features = useMemo(() => {
-    try {
-      const parsed = JSON.parse(product.description);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      const strippedHtml = product.description?.replace(/<[^>]+>/g, '');
-      return strippedHtml ? [strippedHtml] : [];
-    }
-  }, [product.description]);
+    return Array.isArray(product.features) ? product.features : [];
+  }, [product.features]);
 
   return (
     <motion.div
@@ -57,9 +49,6 @@ const ProductCard = ({ product, index }) => {
           
           <div className="flex items-baseline mb-6">
             <span className={`text-4xl font-bold ${isPopular ? 'text-white' : 'text-pr-blue-600'}`}>{displayPrice}</span>
-            {hasSale && (
-                <span className={`text-lg line-through ml-2 ${isPopular ? 'text-pr-blue-200' : 'text-gray-400'}`}>{originalPrice}</span>
-            )}
           </div>
           
           <ul className="space-y-3 mb-8">
@@ -93,39 +82,13 @@ const ProductsList = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchProductsWithQuantities = async () => {
+    const fetchProducts = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const productsResponse = await getProducts({ sort_by: 'order', order: 'ASC' });
-
-        if (productsResponse.products.length === 0) {
-          setProducts([]);
-          return;
-        }
-
-        const productIds = productsResponse.products.map(product => product.id);
-
-        const quantitiesResponse = await getProductQuantities({
-          fields: 'inventory_quantity',
-          product_ids: productIds
-        });
-
-        const variantQuantityMap = new Map();
-        quantitiesResponse.variants.forEach(variant => {
-          variantQuantityMap.set(variant.id, variant.inventory_quantity);
-        });
-
-        const productsWithQuantities = productsResponse.products.map(product => ({
-          ...product,
-          variants: product.variants.map(variant => ({
-            ...variant,
-            inventory_quantity: variantQuantityMap.get(variant.id) ?? variant.inventory_quantity
-          }))
-        }));
-
-        setProducts(productsWithQuantities);
+        const productsResponse = await getProducts({ sortBy: 'sort_order', order: 'ASC' });
+        setProducts(productsResponse.products || []);
       } catch (err) {
         setError(err.message || 'Failed to load products');
       } finally {
@@ -133,7 +96,7 @@ const ProductsList = () => {
       }
     };
 
-    fetchProductsWithQuantities();
+    fetchProducts();
   }, []);
 
   if (loading) {

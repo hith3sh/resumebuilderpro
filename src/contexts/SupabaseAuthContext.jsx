@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const fetchProfile = useCallback(async (user) => {
     if (!user) {
@@ -20,10 +21,28 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, role')
+        .select('*')
         .eq('id', user.id)
         .single();
-      if (error && error.code !== 'PGRST116') throw error; // PGRST116: no rows found
+      
+      if (error && error.code === 'PGRST116') {
+        // No profile found, create one with default role
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            role: 'user' // Default role for new users
+          })
+          .select('*')
+          .single();
+        
+        if (insertError) throw insertError;
+        setProfile(newProfile);
+        return;
+      }
+      
+      if (error) throw error;
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -34,7 +53,19 @@ export const AuthProvider = ({ children }) => {
   const handleSession = useCallback(async (session) => {
     setSession(session);
     const currentUser = session?.user ?? null;
-    setUser(currentUser);
+    
+    // Use a ref or state comparison to avoid infinite loops
+    setUser(prevUser => {
+      const wasLoggedOut = !prevUser && currentUser; // Detect if this is a new login
+      
+      // Set flag if user just logged in (will be used by components to handle purchase intent)
+      if (wasLoggedOut) {
+        setJustLoggedIn(true);
+      }
+      
+      return currentUser;
+    });
+    
     await fetchProfile(currentUser);
     setLoading(false);
   }, [fetchProfile]);
@@ -76,13 +107,19 @@ export const AuthProvider = ({ children }) => {
     return { error };
   }, [toast]);
 
+  const clearJustLoggedIn = useCallback(() => {
+    setJustLoggedIn(false);
+  }, []);
+
   const value = useMemo(() => ({
     user,
     session,
     profile,
     loading,
     signOut,
-  }), [user, session, profile, loading, signOut]);
+    justLoggedIn,
+    clearJustLoggedIn,
+  }), [user, session, profile, loading, signOut, justLoggedIn, clearJustLoggedIn]);
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 };

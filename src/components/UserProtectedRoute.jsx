@@ -1,9 +1,9 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Loader2, ShieldOff } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-const AdminProtectedRoute = ({ children }) => {
+const UserProtectedRoute = ({ children }) => {
   const { user, profile, loading } = useAuth();
 
   if (loading) {
@@ -18,11 +18,12 @@ const AdminProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
-  if (profile?.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+  // If user is admin, redirect to admin dashboard
+  if (profile?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
   }
 
   return children;
 };
 
-export default AdminProtectedRoute;
+export default UserProtectedRoute;

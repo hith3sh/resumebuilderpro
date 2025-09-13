@@ -104,7 +104,7 @@ CREATE POLICY "Users can update their own resumes" ON storage.objects
 CREATE POLICY "Users can delete their own resumes" ON storage.objects
     FOR DELETE USING (
         bucket_id = 'resumes' AND 
-        auth.uid()::text = (storage.foldername(name))[1]
+    auth.uid()::text = (storage.foldername(name))[1
     );
 
 -- Admins can access all resumes

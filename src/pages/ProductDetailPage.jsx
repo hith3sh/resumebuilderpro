@@ -2,18 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { getProduct, initializeCheckout } from '@/api/EcommerceApi';
+import { getProduct } from '@/api/ProductsApi';
+import { formatCurrency } from '@/api/StripeApi';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, ShoppingCart, ArrowLeft, Info, Star } from 'lucide-react';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+
+// Function to get the correct image based on product title
+const getProductImage = (title) => {
+  const imageMap = {
+    'Basic Resume': '/basic_resume.webp',
+    'Resume + Cover Letter': '/resume_&_coverletter.webp',
+    'Full Branding Package': '/full_branding_package.webp'
+  };
+  
+  return imageMap[title] || 'https://via.placeholder.com/600';
+};
 
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedVariant, setSelectedVariant] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -22,9 +35,6 @@ const ProductDetailPage = () => {
         setLoading(true);
         const productData = await getProduct(id);
         setProduct(productData);
-        if (productData.variants && productData.variants.length > 0) {
-          setSelectedVariant(productData.variants[0]);
-        }
       } catch (error) {
         toast({
           variant: 'destructive',
@@ -41,25 +51,47 @@ const ProductDetailPage = () => {
   }, [id, navigate, toast]);
 
   const handlePurchase = async () => {
-    if (!selectedVariant) return;
+    if (!product) return;
+    
+    // Check if user is logged in
+    if (!user) {
+      // Store purchase intent in sessionStorage before redirecting to login
+      const purchaseIntent = {
+        type: 'purchase',
+        productData: {
+          product_id: product.id,
+          product_name: product.title,
+          price: product.price_in_cents,
+          quantity: 1
+        },
+        timestamp: Date.now()
+      };
+      
+      sessionStorage.setItem('purchaseIntent', JSON.stringify(purchaseIntent));
+      
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to make a purchase.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      const successUrl = `${window.location.origin}/questionnaire?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = window.location.origin + window.location.pathname;
-
-      const checkoutPayload = {
-        items: [{ variant_id: selectedVariant.id, quantity: 1 }],
-        successUrl,
-        cancelUrl,
-        billing_address_collection: 'never',
-        customer_fields_mode: 'required_fields',
-        required_fields: ['email', 'full_name', 'phone'],
-      };
-      
-      const { url } = await initializeCheckout(checkoutPayload);
-      window.location.href = url;
-
+      // Navigate to Stripe checkout page with product data
+      navigate('/stripe-checkout', {
+        state: {
+          items: [{
+            product_id: product.id,
+            product_name: product.title,
+            price: product.price_in_cents,
+            quantity: 1
+          }]
+        }
+      });
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -90,8 +122,21 @@ const ProductDetailPage = () => {
     );
   }
   
-  const currentPrice = selectedVariant?.sale_price_in_cents_formatted || selectedVariant?.price_in_cents_formatted;
-  const originalPrice = selectedVariant?.sale_price_in_cents_formatted ? selectedVariant?.price_in_cents_formatted : null;
+  const currentPrice = formatCurrency(product?.price_in_cents || 0, product?.currency);
+  const originalPrice = product?.original_price_cents 
+    ? formatCurrency(product.original_price_cents, product.currency)
+    : null;
+  const hasSale = product?.original_price_cents && product.original_price_cents > product.price_in_cents;
+
+  // Debug: Log product pricing data
+  console.log('Product detail pricing:', {
+    title: product?.title,
+    price_in_cents: product?.price_in_cents,
+    original_price_cents: product?.original_price_cents,
+    currentPrice,
+    originalPrice,
+    hasSale
+  });
 
   return (
     <>
@@ -115,7 +160,7 @@ const ProductDetailPage = () => {
                 className="aspect-w-1 aspect-h-1"
               >
                 <img
-                  src={product.image || 'https://via.placeholder.com/600'}
+                  src={getProductImage(product.title)}
                   alt={product.title}
                   className="w-full h-full object-cover rounded-2xl shadow-lg"
                 />
@@ -141,7 +186,7 @@ const ProductDetailPage = () => {
                 
                 <div className="mt-4">
                   <span className="text-3xl font-bold text-gray-900">{currentPrice}</span>
-                  {originalPrice && (
+                  {hasSale && originalPrice && (
                     <span className="ml-2 text-xl text-gray-500 line-through">{originalPrice}</span>
                   )}
                 </div>
@@ -155,25 +200,21 @@ const ProductDetailPage = () => {
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
 
-              {product.variants.length > 1 && (
+              {product.features && product.features.length > 0 && (
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  <h3 className="text-sm text-gray-900 font-medium">Service Level:</h3>
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {product.variants.map((variant) => (
-                      <Button
-                        key={variant.id}
-                        variant={selectedVariant?.id === variant.id ? 'default' : 'outline'}
-                        onClick={() => setSelectedVariant(variant)}
-                        className="w-full"
-                      >
-                        {variant.title}
-                      </Button>
+                  <h3 className="text-sm text-gray-900 font-medium mb-3">What's Included:</h3>
+                  <ul className="space-y-2">
+                    {product.features.map((feature, index) => (
+                      <li key={index} className="flex items-center text-sm text-gray-600">
+                        <Star className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                        {feature}
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </motion.div>
               )}
 

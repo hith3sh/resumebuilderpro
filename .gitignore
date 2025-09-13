@@ -7,6 +7,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Build outputs
+stripe-sample-code/
+stripe-sample-code-embeddedform-react/
+
 dist/
 build/
 .vite/

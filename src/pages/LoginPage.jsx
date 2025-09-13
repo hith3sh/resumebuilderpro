@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Mail, LogIn, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, Mail, LogIn, Loader2, ArrowLeft, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +11,11 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState('signin'); // 'signin', 'signup', 'magiclink'
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -26,7 +29,62 @@ const LoginPage = () => {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  const handleLogin = async (e) => {
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      let result;
+      
+      if (authMode === 'signin') {
+        result = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+      } else if (authMode === 'signup') {
+        const redirectTo = import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/profile`;
+        result = await supabase.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            emailRedirectTo: redirectTo,
+          },
+        });
+      }
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (authMode === 'signin') {
+        toast({
+          title: "Welcome back!",
+          description: "You have been successfully signed in.",
+        });
+        navigate('/profile');
+      } else {
+        toast({
+          title: "Account created!",
+          description: result.data?.user?.email_confirmed_at 
+            ? "You have been successfully signed up and can now access your account."
+            : "Please check your email to verify your account.",
+        });
+        if (result.data?.user?.email_confirmed_at) {
+          navigate('/profile');
+        }
+      }
+    } catch (error) {
+      toast({
+        title: authMode === 'signin' ? "Sign in failed" : "Sign up failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMagicLink = async (e) => {
     e.preventDefault();
     if (cooldown > 0) return;
 
@@ -65,23 +123,42 @@ const LoginPage = () => {
     }
   };
 
-  const isButtonDisabled = isSubmitting || !email || cooldown > 0;
-  const buttonText = () => {
+  const isEmailAuthDisabled = isSubmitting || !email || (authMode !== 'magiclink' && !password);
+  const isMagicLinkDisabled = isSubmitting || !email || cooldown > 0;
+  
+  const getButtonContent = () => {
     if (isSubmitting) {
       return (
         <>
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending...
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          {authMode === 'magiclink' ? 'Sending...' : 'Processing...'}
         </>
       );
     }
-    if (cooldown > 0) {
+    
+    if (authMode === 'magiclink' && cooldown > 0) {
       return `Wait ${cooldown}s`;
     }
-    return (
-      <>
-        <LogIn className="mr-2 h-5 w-5" /> Send Login Link
-      </>
-    );
+    
+    if (authMode === 'signin') {
+      return (
+        <>
+          <LogIn className="mr-2 h-5 w-5" /> Sign In
+        </>
+      );
+    } else if (authMode === 'signup') {
+      return (
+        <>
+          <UserPlus className="mr-2 h-5 w-5" /> Sign Up
+        </>
+      );
+    } else {
+      return (
+        <>
+          <Mail className="mr-2 h-5 w-5" /> Send Magic Link
+        </>
+      );
+    }
   };
 
   return (
@@ -113,11 +190,57 @@ const LoginPage = () => {
               </div>
               <span className="text-2xl font-bold text-pr-blue-600">ProResume Designs</span>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-800">Customer Portal</h1>
-            <p className="text-gray-500">Enter your email to receive a secure login link.</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              {authMode === 'signin' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : 'Customer Portal'}
+            </h1>
+            <p className="text-gray-500">
+              {authMode === 'signin' 
+                ? 'Sign in to access your account' 
+                : authMode === 'signup' 
+                ? 'Create your account to get started' 
+                : 'Enter your email to receive a secure login link'
+              }
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          {/* Auth Mode Selector */}
+          <div className="flex space-x-1 mb-6 bg-gray-100 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setAuthMode('signin')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                authMode === 'signin' 
+                  ? 'bg-white text-pr-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode('signup')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                authMode === 'signup' 
+                  ? 'bg-white text-pr-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Sign Up
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode('magiclink')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                authMode === 'magiclink' 
+                  ? 'bg-white text-pr-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Magic Link
+            </button>
+          </div>
+
+          <form onSubmit={authMode === 'magiclink' ? handleMagicLink : handleEmailAuth} className="space-y-6">
             <div>
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
               <div className="relative mt-2">
@@ -134,14 +257,89 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-pr-blue-600 text-white py-3 text-lg hover:bg-pr-blue-700" disabled={isButtonDisabled}>
-              {buttonText()}
+            {(authMode === 'signin' || authMode === 'signup') && (
+              <div>
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                    placeholder={authMode === 'signup' ? "Create a strong password" : "Enter your password"}
+                    required
+                    minLength={authMode === 'signup' ? 6 : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {authMode === 'signup' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Password must be at least 6 characters long
+                  </p>
+                )}
+              </div>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full bg-pr-blue-600 text-white py-3 text-lg hover:bg-pr-blue-700" 
+              disabled={authMode === 'magiclink' ? isMagicLinkDisabled : isEmailAuthDisabled}
+            >
+              {getButtonContent()}
             </Button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-8">
-            New here? Your account is created automatically after your first purchase.
-          </p>
+          {authMode === 'magiclink' && (
+            <p className="text-center text-sm text-gray-500 mt-8">
+              New here? Your account is created automatically when you use the magic link.
+            </p>
+          )}
+
+          {(authMode === 'signin' || authMode === 'signup') && (
+            <div className="text-center text-sm text-gray-500 mt-6 space-y-2">
+              {authMode === 'signin' && (
+                <p>
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('signup')}
+                    className="text-pr-blue-600 hover:text-pr-blue-700 font-medium"
+                  >
+                    Sign up here
+                  </button>
+                </p>
+              )}
+              {authMode === 'signup' && (
+                <p>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('signin')}
+                    className="text-pr-blue-600 hover:text-pr-blue-700 font-medium"
+                  >
+                    Sign in here
+                  </button>
+                </p>
+              )}
+              <p>
+                Prefer passwordless login?{' '}
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('magiclink')}
+                  className="text-pr-blue-600 hover:text-pr-blue-700 font-medium"
+                >
+                  Use magic link
+                </button>
+              </p>
+            </div>
+          )}
         </motion.div>
       </div>
     </>

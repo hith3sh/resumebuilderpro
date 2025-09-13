@@ -87,26 +87,7 @@ const ResumeGrader = () => {
     if (cooldown > 0) return;
     
     setIsSubmitting(true);
-    setCooldown(60);
-
-    let userId = user?.id;
-    if (!user) {
-        const { error } = await supabase.auth.signInWithOtp({
-            email: formData.email,
-            options: {
-                data: {
-                    full_name: formData.name,
-                },
-                shouldCreateUser: true
-            }
-        });
-        if (error) {
-            toast({ title: "Authentication Error", description: error.message, variant: "destructive" });
-            setIsSubmitting(false);
-            return;
-        }
-        toast({ title: "Check your email!", description: "A login link has been sent to you. Your results will be saved to your new account."});
-    }
+    setCooldown(5); // Reduced for testing
 
     try {
       const reader = new FileReader();
@@ -114,43 +95,78 @@ const ResumeGrader = () => {
       reader.onload = async (event) => {
           const resumeText = event.target.result;
           
+          // Analyze the resume
           const { data, error: functionError } = await supabase.functions.invoke('analyze-resume', {
               body: JSON.stringify({ resumeText }),
           });
 
-          if (functionError) throw functionError;
+          if (functionError) {
+            console.error('Function error:', functionError);
+            throw functionError;
+          }
           
-          const filePath = `${userId || 'unauthenticated'}/${Date.now()}_${resumeFile.name}`;
+          // Upload resume file to storage
+          const filePath = `pending_analysis/${Date.now()}_${resumeFile.name}`;
           const { error: uploadError } = await supabase.storage.from('resumes').upload(filePath, resumeFile);
           if (uploadError) throw uploadError;
 
           const { data: urlData } = supabase.storage.from('resumes').getPublicUrl(filePath);
 
+          // Generate confirmation token
+          const confirmationToken = crypto.randomUUID();
+          
+          // Save analysis data to pending_analysis table
           const analysisData = {
               name: formData.name,
               email: formData.email,
-              user_id: userId || null,
               resume_url: urlData.publicUrl,
               ats_score: data.score,
-              analysis_results: data.analysis
+              analysis_results: data.analysis,
+              status: 'pending_confirmation',
+              confirmation_token: confirmationToken,
+              created_at: new Date().toISOString()
           };
 
-          const { error: dbError } = await supabase.from('resume_analysis').insert(analysisData);
+          const { data: insertedData, error: dbError } = await supabase
+            .from('pending_analysis')
+            .insert(analysisData)
+            .select()
+            .single();
+            
           if (dbError) throw dbError;
           
-          if(userId) {
-              const { error: profileError } = await supabase.from('profiles').upsert({ id: userId, email: formData.email, name: formData.name, ats_score: data.score, analysis_results: data.analysis }, { onConflict: 'id' });
-              if (profileError) console.error("Profile update error:", profileError.message);
-          }
-          
-          setAnalysisResult(data);
+          // Send confirmation email
+          const { error: emailError } = await supabase.functions.invoke('send-analysis-email', {
+              body: JSON.stringify({ 
+                  email: formData.email,
+                  name: formData.name,
+                  analysisId: insertedData.id,
+                  confirmationToken: confirmationToken,
+                  siteUrl: 'http://localhost:5173' // For local testing
 
-          setIsModalOpen(true);
+              }),
+          });
+          
+          if (emailError) console.error('Email error:', emailError);
+          
+          // Show success message
+          toast({ 
+            title: "Analysis Complete!", 
+            description: "Check your email for your detailed ATS analysis report and account setup instructions." 
+          });
+          
+          // Reset form
           setFileName('');
           setResumeFile(null);
+          setFormData({ name: '', email: user?.email || '' });
       };
     } catch (error) {
-      toast({ title: "Analysis Failed", description: error.message, variant: "destructive" });
+      console.error('Analysis error:', error);
+      toast({ 
+        title: "Analysis Failed", 
+        description: error.message || "Something went wrong. Please try again.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsSubmitting(false);
     }
