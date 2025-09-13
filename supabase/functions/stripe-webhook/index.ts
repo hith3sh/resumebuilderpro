@@ -19,20 +19,96 @@ const supabase = createClient(
 
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || ''
 
-serve(async (req) => {
-  // Debug environment variables
-  console.log('Environment check:', {
-    hasStripeKey: !!Deno.env.get('STRIPE_SECRET_KEY'),
-    hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
-    hasServiceRoleKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-    hasWebhookSecret: !!Deno.env.get('STRIPE_WEBHOOK_SECRET')
-  })
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
 
-  const signature = req.headers.get('stripe-signature')
+serve(async (req) => {
+  console.log('=== WEBHOOK CALLED ===')
+
+  try {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      console.log('CORS preflight request')
+      return new Response('ok', { headers: corsHeaders })
+    }
+
+    // Simple health check
+    if (req.url.includes('?test=true')) {
+      console.log('Health check request')
+      return new Response(JSON.stringify({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: {
+          hasStripeKey: !!Deno.env.get('STRIPE_SECRET_KEY'),
+          hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
+          hasServiceRoleKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+          hasWebhookSecret: !!Deno.env.get('STRIPE_WEBHOOK_SECRET')
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    console.log('Processing webhook request...')
+
+    // Debug environment variables
+    const envCheck = {
+      hasStripeKey: !!Deno.env.get('STRIPE_SECRET_KEY'),
+      hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
+      hasServiceRoleKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+      hasWebhookSecret: !!Deno.env.get('STRIPE_WEBHOOK_SECRET'),
+      supabaseUrl: Deno.env.get('SUPABASE_URL')?.substring(0, 30) + '...',
+      serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.substring(0, 20) + '...'
+    }
+    console.log('Environment check:', envCheck)
+  } catch (error) {
+    console.error('Early error in webhook:', error)
+    return new Response(JSON.stringify({ error: 'Early webhook error', details: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  try {
+
+  // Log all headers for debugging
+  const allHeaders = {}
+  for (const [key, value] of req.headers.entries()) {
+    allHeaders[key] = value
+  }
+  console.log('All request headers:', allHeaders)
+
+  const signature = req.headers.get('stripe-signature') || req.headers.get('Stripe-Signature')
   const body = await req.text()
 
-  if (!signature || !webhookSecret) {
-    return new Response('Missing signature or webhook secret', { status: 400 })
+  console.log('Signature check:', {
+    signature: signature?.substring(0, 20) + '...',
+    webhookSecret: webhookSecret?.substring(0, 20) + '...',
+    bodyLength: body?.length
+  })
+
+  if (!signature) {
+    console.error('Missing stripe signature header')
+    return new Response(JSON.stringify({
+      error: 'Missing stripe signature header',
+      availableHeaders: Object.keys(allHeaders)
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (!webhookSecret) {
+    console.error('Missing webhook secret environment variable')
+    return new Response(JSON.stringify({
+      error: 'Webhook secret not configured'
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 
   try {
@@ -76,11 +152,14 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
     console.error('Webhook error:', error)
-    return new Response(`Webhook error: ${error.message}`, { status: 400 })
+    return new Response(`Webhook error: ${error.message}`, {
+      status: 400,
+      headers: corsHeaders
+    })
   }
 })
 
@@ -171,6 +250,18 @@ async function handleCheckoutSuccess(session: Stripe.Checkout.Session) {
   console.log('Checkout session completed:', session.id)
 
   try {
+    // Test Supabase connection first
+    console.log('Testing Supabase connection...')
+    const { data: testData, error: testError } = await supabase
+      .from('orders')
+      .select('count', { count: 'exact', head: true })
+
+    if (testError) {
+      console.error('Supabase connection test failed:', testError)
+      throw new Error(`Supabase connection failed: ${testError.message}`)
+    }
+
+    console.log('Supabase connection successful, total orders:', testData)
     console.log('Attempting to update order with session ID:', session.id)
 
     // First, check if order exists
