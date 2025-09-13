@@ -39,30 +39,14 @@ serve(async (req) => {
       )
     }
 
-    // Get the JWT token from the authorization header that Supabase automatically provides
+    // Create a supabase client with the Auth context from the request
     const authHeader = req.headers.get('authorization')
-    console.log('Auth header:', authHeader ? 'present' : 'missing')
+    console.log('Auth header received:', authHeader ? 'YES' : 'NO')
     
-    // Create a Supabase client that inherits the user context from the request
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: authHeader!,
-          },
-        },
-      }
-    )
-
-    // Get the current user from the request context
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-
-    if (authError || !user) {
-      console.error('Authentication failed:', authError)
+    if (!authHeader) {
+      console.error('No auth header in request')
       return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
+        JSON.stringify({ error: 'No authorization header' }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -70,7 +54,24 @@ serve(async (req) => {
       )
     }
 
-    console.log('User authenticated successfully:', user.id)
+    const token = authHeader.replace('Bearer ', '')
+    console.log('Token length:', token.length)
+
+    // Use the service role client but verify the user token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+
+    if (userError || !user) {
+      console.error('User verification failed:', userError)
+      return new Response(
+        JSON.stringify({ error: 'Invalid user token', details: userError?.message }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    console.log('User verified successfully:', user.id)
 
     const { items, totalAmount, metadata = {} } = await req.json()
 
