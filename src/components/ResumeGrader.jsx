@@ -202,7 +202,31 @@ const ResumeGrader = () => {
       // Upload resume file to storage
       console.log('Uploading resume...');
       const filePath = `pending_analysis/${Date.now()}_${resumeFile.name}`;
-      const { error: uploadError } = await supabase.storage.from('resumes').upload(filePath, resumeFile);
+
+      // Try to upload, create bucket if it doesn't exist
+      let uploadError;
+      const { error: initialUploadError } = await supabase.storage.from('resumes').upload(filePath, resumeFile);
+
+      if (initialUploadError && initialUploadError.message.includes('Bucket not found')) {
+        console.log('Creating resumes bucket...');
+        // Create the bucket if it doesn't exist
+        const { error: bucketError } = await supabase.storage.createBucket('resumes', {
+          public: true,
+          allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+        });
+
+        if (bucketError && !bucketError.message.includes('already exists')) {
+          console.error('Bucket creation error:', bucketError);
+          throw new Error('Failed to create storage bucket');
+        }
+
+        // Try upload again
+        const { error: retryUploadError } = await supabase.storage.from('resumes').upload(filePath, resumeFile);
+        uploadError = retryUploadError;
+      } else {
+        uploadError = initialUploadError;
+      }
+
       if (uploadError) {
         console.error('Upload error:', uploadError);
         throw new Error('Failed to upload resume');
@@ -220,7 +244,10 @@ const ResumeGrader = () => {
           email: formData.email,
           resume_url: urlData.publicUrl,
           ats_score: data.score,
-          analysis_results: data.analysis,
+          analysis_results: {
+            score: data.score,
+            feedback: data.analysis
+          },
           status: 'pending_confirmation',
           confirmation_token: confirmationToken,
           created_at: new Date().toISOString()

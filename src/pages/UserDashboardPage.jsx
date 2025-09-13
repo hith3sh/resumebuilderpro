@@ -136,26 +136,44 @@ const UserDashboardPage = () => {
     </div>
   );
 
-  const AnalysisReportDialog = ({ analysis }) => (
-    <DialogContent className="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle>ATS Analysis Report</DialogTitle>
-        <DialogDescription>
-          Detailed breakdown of your resume's score.
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 py-4">
-        {Object.entries(analysis).map(([key, value]) => (
-          <div key={key}>
-            <h4 className="font-semibold capitalize text-gray-800">
-              {key.replace('_', ' ')}: Score {value.score}/20
-            </h4>
-            <p className="text-sm text-gray-600">{value.details.join(' ')}</p>
+  const AnalysisReportDialog = ({ analysis }) => {
+    console.log('Analysis data in dialog:', analysis);
+
+    if (!analysis) {
+      return (
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>ATS Analysis Report</DialogTitle>
+            <DialogDescription>
+              No analysis data available
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-gray-600">Analysis results not found. Please try submitting your resume again.</p>
           </div>
-        ))}
-      </div>
-    </DialogContent>
-  );
+        </DialogContent>
+      );
+    }
+
+    return (
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>ATS Analysis Report</DialogTitle>
+          <DialogDescription>
+            Detailed breakdown of your resume's score: {analysis.score || 'N/A'}/100
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-semibold text-gray-800 mb-2">Analysis Feedback</h4>
+            <div className="text-sm text-gray-600 whitespace-pre-line">
+              {analysis.feedback || 'No feedback available'}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    );
+  };
 
   if (authLoading) {
     return (
