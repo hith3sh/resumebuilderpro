@@ -54,26 +54,29 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
 
   if (isLocalhost) {
     return (
-      <div style={{ border: '2px solid orange', padding: '20px', margin: '10px' }}>
-        <h3>⚠️ Embedded Checkout - Development Limitation</h3>
-        <p>Stripe's embedded checkout requires HTTPS to function properly. On localhost HTTP, the payment form cannot load due to browser security policies.</p>
-        <p><strong>Solutions:</strong></p>
-        <ul>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-amber-800 mb-3">Embedded Checkout - Development Limitation</h3>
+        <p className="text-amber-700 mb-4">Stripe's embedded checkout requires HTTPS to function properly. On localhost HTTP, the payment form cannot load due to browser security policies.</p>
+        <p className="font-medium text-amber-800 mb-2">Solutions:</p>
+        <ul className="list-disc list-inside text-amber-700 space-y-1 mb-4">
           <li>Deploy to a production environment with HTTPS</li>
           <li>Use one of the working payment forms below for local testing</li>
           <li>Set up local HTTPS development environment</li>
         </ul>
-        <p><em>The embedded checkout will work perfectly in production with HTTPS.</em></p>
+        <p className="italic text-amber-600">The embedded checkout will work perfectly in production with HTTPS.</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ border: '2px solid red', padding: '20px', margin: '10px' }}>
-        <h3>Checkout Error</h3>
-        <p style={{ color: 'red' }}>Error: {error}</p>
-        <button onClick={() => {setError(null); setClientSecret(null);}} style={{ padding: '10px', marginTop: '10px' }}>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-red-800 mb-3">Checkout Error</h3>
+        <p className="text-red-700 mb-4">Error: {error}</p>
+        <button 
+          onClick={() => {setError(null); setClientSecret(null);}} 
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+        >
           Try Again
         </button>
       </div>
@@ -84,7 +87,7 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
   const checkoutKey = `checkout-${totalAmount}-${items.map(i => `${i.product_id}-${i.quantity || 1}`).join('-')}`;
 
   return (
-    <div style={{ border: '2px solid green', padding: '20px', margin: '10px' }}>
+    <div className="rounded-lg overflow-hidden">
       <EmbeddedCheckoutProvider
         key={checkoutKey}
         stripe={stripePromise}
