@@ -94,6 +94,8 @@ dist
 # public
 _redirects
 
+.temp
+
 # Storybook build outputs
 .out
 .storybook-out
