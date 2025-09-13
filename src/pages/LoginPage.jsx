@@ -15,7 +15,7 @@ const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [authMode, setAuthMode] = useState('signin'); // 'signin', 'signup', 'magiclink'
+  const [authMode, setAuthMode] = useState('magiclink'); // 'signin', 'signup', 'magiclink'
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -191,14 +191,14 @@ const LoginPage = () => {
               <span className="text-2xl font-bold text-pr-blue-600">ProResume Designs</span>
             </Link>
             <h1 className="text-3xl font-bold text-gray-800">
-              {authMode === 'signin' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : 'Customer Portal'}
+              {authMode === 'magiclink' ? 'Access Your Account' : authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
             </h1>
             <p className="text-gray-500">
-              {authMode === 'signin' 
-                ? 'Sign in to access your account' 
-                : authMode === 'signup' 
-                ? 'Create your account to get started' 
-                : 'Enter your email to receive a secure login link'
+              {authMode === 'magiclink'
+                ? 'Enter your email to receive a secure login link'
+                : authMode === 'signin'
+                ? 'Sign in to access your account'
+                : 'Create your account to get started'
               }
             </p>
           </div>
@@ -207,10 +207,21 @@ const LoginPage = () => {
           <div className="flex space-x-1 mb-6 bg-gray-100 rounded-lg p-1">
             <button
               type="button"
+              onClick={() => setAuthMode('magiclink')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                authMode === 'magiclink'
+                  ? 'bg-white text-pr-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Magic Link
+            </button>
+            <button
+              type="button"
               onClick={() => setAuthMode('signin')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                authMode === 'signin' 
-                  ? 'bg-white text-pr-blue-600 shadow-sm' 
+                authMode === 'signin'
+                  ? 'bg-white text-pr-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -220,23 +231,12 @@ const LoginPage = () => {
               type="button"
               onClick={() => setAuthMode('signup')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                authMode === 'signup' 
-                  ? 'bg-white text-pr-blue-600 shadow-sm' 
+                authMode === 'signup'
+                  ? 'bg-white text-pr-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Sign Up
-            </button>
-            <button
-              type="button"
-              onClick={() => setAuthMode('magiclink')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                authMode === 'magiclink' 
-                  ? 'bg-white text-pr-blue-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Magic Link
             </button>
           </div>
 

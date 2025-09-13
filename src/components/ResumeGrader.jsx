@@ -137,13 +137,13 @@ const ResumeGrader = () => {
           
           // Send confirmation email
           const { error: emailError } = await supabase.functions.invoke('send-analysis-email', {
-              body: JSON.stringify({ 
+              body: JSON.stringify({
                   email: formData.email,
                   name: formData.name,
                   analysisId: insertedData.id,
                   confirmationToken: confirmationToken,
-                  siteUrl: 'http://localhost:5173' // For local testing
-
+                  confirmationUrl: `${window.location.origin}/confirm-analysis/${confirmationToken}`,
+                  atsScore: data.score
               }),
           });
           

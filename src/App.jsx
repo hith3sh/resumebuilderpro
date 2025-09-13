@@ -22,6 +22,7 @@ import TermsOfServicePage from '@/pages/TermsOfServicePage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
 import DisclaimerPage from '@/pages/DisclaimerPage';
 import PasswordSetupPage from '@/pages/PasswordSetupPage';
+import ConfirmAnalysisPage from '@/pages/ConfirmAnalysisPage';
 import { usePurchaseIntent } from '@/hooks/usePurchaseIntent';
 
 // Component that handles purchase intent inside Router context
@@ -78,6 +79,7 @@ function AppContent() {
             <Route path="questionnaire" element={<QuestionnairePage />} />
             <Route path="success" element={<SuccessPage />} />
             <Route path="setup-password" element={<PasswordSetupPage />} />
+            <Route path="confirm-analysis/:token" element={<ConfirmAnalysisPage />} />
           </Route>
         </Routes>
   );
