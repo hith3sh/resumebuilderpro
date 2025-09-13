@@ -85,7 +85,6 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
 
   return (
     <div style={{ border: '2px solid green', padding: '20px', margin: '10px' }}>
-      <h3>Embedded Stripe Checkout</h3>
       <EmbeddedCheckoutProvider
         key={checkoutKey}
         stripe={stripePromise}

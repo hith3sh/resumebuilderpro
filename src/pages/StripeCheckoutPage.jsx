@@ -194,7 +194,7 @@ const StripeCheckoutPage = () => {
               animate={{ opacity: 1, x: 0 }}
               className="bg-white p-6 rounded-2xl shadow-lg"
             >
-              <h2 className="text-xl font-semibold mb-4">Payment Information</h2>
+              {/* <h2 className="text-xl font-semibold mb-4">Payment Information</h2> */}
               
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
