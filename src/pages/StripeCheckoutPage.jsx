@@ -13,6 +13,17 @@ import EmbeddedStripeCheckout from '@/components/EmbeddedStripeCheckout';
 import { createPaymentIntent } from '@/api/StripeApi';
 import { formatCurrency } from '@/api/StripeApi';
 
+// Function to get the correct image based on product title
+const getProductImage = (title) => {
+  const imageMap = {
+    'Basic Resume': '/basic_resume.webp',
+    'Resume + Cover Letter': '/resume_&_coverletter.webp',
+    'Full Branding Package': '/full_branding_package.webp'
+  };
+  
+  return imageMap[title] || 'https://via.placeholder.com/150';
+};
+
 const StripeCheckoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -144,12 +155,19 @@ const StripeCheckoutPage = () => {
               
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <div key={index} className="flex items-center py-4 border-b border-gray-100 gap-4">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-800">{item.product_name}</h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 mb-2">
                         Quantity: {item.quantity || 1}
                       </p>
+                      <div className="w-32 h-32 rounded-lg overflow-hidden shadow-sm">
+                        <img
+                          src={getProductImage(item.product_name)}
+                          alt={item.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-800">
@@ -185,7 +203,6 @@ const StripeCheckoutPage = () => {
                 </div>
               ) : (
                 <div>
-                  <h4>🎯 NEW: Embedded Checkout (Official Stripe Approach):</h4>
                   <EmbeddedStripeCheckout 
                     items={items}
                     totalAmount={totalAmount}
@@ -194,21 +211,6 @@ const StripeCheckoutPage = () => {
                     }}
                   />
                   <hr style={{margin: '20px 0'}} />
-                  <details style={{marginBottom: '20px'}}>
-                    <summary>🔧 Debug: Other Payment Form Tests</summary>
-                    <h4>Working Form (Official Pattern):</h4>
-                    <WorkingStripeForm clientSecret={clientSecret} />
-                    <hr style={{margin: '20px 0'}} />
-                    <h4>Testing Simple Form:</h4>
-                    <SimpleStripeForm clientSecret={clientSecret} />
-                    <hr style={{margin: '20px 0'}} />
-                    <h4>Original Complex Form:</h4>
-                    <StripeCheckoutForm
-                      clientSecret={clientSecret}
-                      onSuccess={handlePaymentSuccess}
-                      onError={handlePaymentError}
-                    />
-                  </details>
                 </div>
               )}
               

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -9,7 +9,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, CreditCard } from 'lucide-react';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 // Initialize Stripe
@@ -85,33 +84,41 @@ const CheckoutForm = ({ clientSecret, onSuccess, onError }) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border border-gray-200 rounded-lg">
-        <PaymentElement 
-          options={{
-            layout: "tabs"
-          }}
-        />
-      </div>
-      
-      <Button
-        type="submit"
-        disabled={!stripe || isLoading}
-        className="w-full bg-pr-blue-600 hover:bg-pr-blue-700 text-white py-3"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing Payment...
-          </>
-        ) : (
-          <>
-            <CreditCard className="mr-2 h-4 w-4" />
-            Complete Payment
-          </>
-        )}
-      </Button>
-    </form>
+    <div className="max-w-md mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-white p-6 border border-gray-200 rounded-xl shadow-sm">
+          <PaymentElement 
+            options={{
+              layout: "tabs",
+              defaultValues: {
+                billingDetails: {
+                  name: '',
+                  email: '',
+                }
+              }
+            }}
+          />
+        </div>
+        
+        <Button
+          type="submit"
+          disabled={!stripe || isLoading}
+          className="w-full bg-pr-blue-600 hover:bg-pr-blue-700 text-white py-4 text-lg font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processing Payment...
+            </>
+          ) : (
+            <>
+              <CreditCard className="mr-2 h-5 w-5" />
+              Complete Payment
+            </>
+          )}
+        </Button>
+      </form>
+    </div>
   );
 };
 
