@@ -69,16 +69,10 @@ const EnhancedAdminDashboardPage = () => {
 
       if (ordersError) {
         console.error('Orders error:', ordersError);
-        // Fallback: try direct table query with user email
+        // Fallback: try direct table query without joins first
         const { data: directOrders, error: directError } = await supabase
           .from('orders')
-          .select(`
-            *,
-            profiles:user_id (
-              email,
-              name
-            )
-          `)
+          .select('*')
           .order('created_at', { ascending: false })
           .limit(100);
 
@@ -338,7 +332,7 @@ const EnhancedAdminDashboardPage = () => {
                         <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                           <div>
                             <p className="font-medium text-sm">{order.user_email || (order.profiles?.email) || 'Guest'}</p>
-                            <p className="text-xs text-gray-500">{order.user_name || (order.profiles?.name) || `Order #${order.id.slice(0, 8)}`}</p>
+                            <p className="text-xs text-gray-500">{order.user_name || (order.profiles?.name) || (order.user_id ? `User ID: ${order.user_id.slice(0, 8)}` : `Order #${order.id.slice(0, 8)}`)}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-sm">${(order.total_amount / 100).toFixed(2)}</p>
@@ -414,7 +408,7 @@ const EnhancedAdminDashboardPage = () => {
                                   {order.user_email || (order.profiles?.email) || 'Guest'}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  {order.user_name || (order.profiles?.name) || 'N/A'}
+                                  {order.user_name || (order.profiles?.name) || (order.user_id ? `User ID: ${order.user_id.slice(0, 8)}` : 'N/A')}
                                 </div>
                               </div>
                             </td>
