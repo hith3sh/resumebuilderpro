@@ -157,6 +157,7 @@ serve(async (req) => {
       .insert({
         user_id: user.id,
         stripe_checkout_session_id: session.id,
+        // We'll use session ID for webhook updates (modern approach)
         total_amount: totalAmount,
         currency: 'USD',
         status: 'pending',

@@ -128,11 +128,11 @@ RETURNS TABLE (
     user_id UUID,
     user_email TEXT,
     user_name TEXT,
-    stripe_payment_intent_id VARCHAR(255),
+    stripe_payment_intent_id TEXT,
     total_amount INTEGER,
-    currency VARCHAR(3),
-    status VARCHAR(50),
-    payment_status VARCHAR(50),
+    currency TEXT,
+    status TEXT,
+    payment_status TEXT,
     created_at TIMESTAMP WITH TIME ZONE
 ) AS $$
 BEGIN
