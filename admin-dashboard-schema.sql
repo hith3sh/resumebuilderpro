@@ -117,21 +117,17 @@ SELECT
     (SELECT COALESCE(SUM(unique_visitors), 0) FROM public.visitor_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days') as visitors_30d,
     (SELECT COALESCE(SUM(page_views), 0) FROM public.visitor_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days') as pageviews_30d;
 
--- Enable RLS on the view and create admin-only policy
+-- Set view to use security invoker (executes with caller's permissions)
 ALTER VIEW public.admin_dashboard_summary SET (security_invoker = on);
 
-DROP POLICY IF EXISTS "Admin only access to dashboard summary" ON public.admin_dashboard_summary;
-CREATE POLICY "Admin only access to dashboard summary" ON public.admin_dashboard_summary
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-    );
-
--- 8. Create function to get recent orders
+-- 8. Create function to get recent orders with user email
 DROP FUNCTION IF EXISTS public.get_recent_orders(INTEGER);
 CREATE OR REPLACE FUNCTION public.get_recent_orders(days_limit INTEGER DEFAULT 30)
 RETURNS TABLE (
     id UUID,
     user_id UUID,
+    user_email TEXT,
+    user_name TEXT,
     stripe_payment_intent_id VARCHAR,
     total_amount INTEGER,
     currency VARCHAR,
@@ -144,6 +140,8 @@ BEGIN
     SELECT
         o.id,
         o.user_id,
+        COALESCE(p.email, 'Guest') as user_email,
+        COALESCE(p.name, 'N/A') as user_name,
         o.stripe_payment_intent_id,
         o.total_amount,
         o.currency,
@@ -151,6 +149,7 @@ BEGIN
         o.payment_status,
         o.created_at
     FROM public.orders o
+    LEFT JOIN public.profiles p ON o.user_id = p.id
     WHERE o.created_at >= CURRENT_DATE - INTERVAL '1 day' * days_limit
     ORDER BY o.created_at DESC
     LIMIT 100;

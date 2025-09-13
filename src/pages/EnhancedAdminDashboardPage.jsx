@@ -63,10 +63,35 @@ const EnhancedAdminDashboardPage = () => {
       if (summaryError) throw summaryError;
 
       // Fetch recent orders
+      let finalOrders = [];
       const { data: recentOrders, error: ordersError } = await supabase
         .rpc('get_recent_orders', { days_limit: dateRange });
 
-      if (ordersError) console.warn('Orders error:', ordersError);
+      if (ordersError) {
+        console.error('Orders error:', ordersError);
+        // Fallback: try direct table query with user email
+        const { data: directOrders, error: directError } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            profiles:user_id (
+              email,
+              name
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (directError) {
+          console.error('Direct orders error:', directError);
+        } else {
+          console.log('Direct orders fetched:', directOrders?.length || 0);
+          finalOrders = directOrders || [];
+        }
+      } else {
+        console.log('Orders fetched via RPC:', recentOrders?.length || 0);
+        finalOrders = recentOrders || [];
+      }
 
       // Fetch revenue trend
       const { data: revenueData, error: revenueError } = await supabase
@@ -87,11 +112,15 @@ const EnhancedAdminDashboardPage = () => {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (customersError) throw customersError;
+      if (customersError) {
+        console.error('Customers error:', customersError);
+      } else {
+        console.log('Customers fetched:', customers?.length || 0);
+      }
 
       setDashboardData({
         summary: summary || {},
-        recentOrders: recentOrders || [],
+        recentOrders: finalOrders,
         revenueData: revenueData || [],
         userGrowthData: userGrowthData || [],
         customers: customers || []
@@ -308,11 +337,11 @@ const EnhancedAdminDashboardPage = () => {
                       {dashboardData.recentOrders.slice(0, 5).map((order) => (
                         <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                           <div>
-                            <p className="font-medium text-sm">{order.customer_name || order.customer_email}</p>
-                            <p className="text-xs text-gray-500">{order.product_name}</p>
+                            <p className="font-medium text-sm">{order.user_email || (order.profiles?.email) || 'Guest'}</p>
+                            <p className="text-xs text-gray-500">{order.user_name || (order.profiles?.name) || `Order #${order.id.slice(0, 8)}`}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium text-sm">${order.amount}</p>
+                            <p className="font-medium text-sm">${(order.total_amount / 100).toFixed(2)}</p>
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               order.status === 'completed' ? 'bg-green-100 text-green-800' :
                               order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -369,29 +398,31 @@ const EnhancedAdminDashboardPage = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {dashboardData.recentOrders.map((order) => (
+                        {dashboardData.recentOrders.length > 0 ? dashboardData.recentOrders.map((order) => (
                           <tr key={order.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
-                                  {order.customer_name || 'N/A'}
+                                  {order.user_email || (order.profiles?.email) || 'Guest'}
                                 </div>
-                                <div className="text-sm text-gray-500">{order.customer_email}</div>
+                                <div className="text-sm text-gray-500">
+                                  {order.user_name || (order.profiles?.name) || 'N/A'}
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {order.product_name}
+                              Order #{order.id.slice(0, 8)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              ${order.amount}
+                              ${(order.total_amount / 100).toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 py-1 text-xs rounded-full ${
@@ -406,7 +437,13 @@ const EnhancedAdminDashboardPage = () => {
                               {new Date(order.created_at).toLocaleDateString()}
                             </td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr>
+                            <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                              No orders found. Check console for errors.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -436,7 +473,7 @@ const EnhancedAdminDashboardPage = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {dashboardData.customers.map((customer) => (
+                        {dashboardData.customers.length > 0 ? dashboardData.customers.map((customer) => (
                           <tr key={customer.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">{customer.name || 'N/A'}</div>
@@ -472,7 +509,13 @@ const EnhancedAdminDashboardPage = () => {
                               </Button>
                             </td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr>
+                            <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                              No users found. Check console for errors or RLS policies.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
