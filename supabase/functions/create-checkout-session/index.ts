@@ -39,31 +39,38 @@ serve(async (req) => {
       )
     }
 
-    // Get the authorization header from the request
-    const authorization = req.headers.get('authorization')
-    if (!authorization) {
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
+    // Get the JWT token from the authorization header that Supabase automatically provides
+    const authHeader = req.headers.get('authorization')
+    console.log('Auth header:', authHeader ? 'present' : 'missing')
+    
+    // Create a Supabase client that inherits the user context from the request
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader!,
+          },
+        },
+      }
+    )
 
-    // Verify the user with Supabase
-    const token = authorization.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Get the current user from the request context
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
 
     if (authError || !user) {
+      console.error('Authentication failed:', authError)
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: 'Authentication required' }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
     }
+
+    console.log('User authenticated successfully:', user.id)
 
     const { items, totalAmount, metadata = {} } = await req.json()
 
