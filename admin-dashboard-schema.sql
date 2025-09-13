@@ -61,31 +61,35 @@ ALTER TABLE public.revenue_stats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visitor_stats ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create RLS policies (admin-only access)
+DROP POLICY IF EXISTS "Admin only access to analytics" ON public.site_analytics;
 CREATE POLICY "Admin only access to analytics" ON public.site_analytics
     FOR ALL USING (
         (auth.jwt() ->> 'user_metadata')::json ->> 'role' = 'admin'
-        OR 
+        OR
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
+DROP POLICY IF EXISTS "Admin only access to orders" ON public.orders;
 CREATE POLICY "Admin only access to orders" ON public.orders
     FOR ALL USING (
         (auth.jwt() ->> 'user_metadata')::json ->> 'role' = 'admin'
-        OR 
+        OR
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
+DROP POLICY IF EXISTS "Admin only access to revenue stats" ON public.revenue_stats;
 CREATE POLICY "Admin only access to revenue stats" ON public.revenue_stats
     FOR ALL USING (
         (auth.jwt() ->> 'user_metadata')::json ->> 'role' = 'admin'
-        OR 
+        OR
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
+DROP POLICY IF EXISTS "Admin only access to visitor stats" ON public.visitor_stats;
 CREATE POLICY "Admin only access to visitor stats" ON public.visitor_stats
     FOR ALL USING (
         (auth.jwt() ->> 'user_metadata')::json ->> 'role' = 'admin'
-        OR 
+        OR
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
@@ -105,34 +109,37 @@ SELECT
     -- Order Statistics
     (SELECT COALESCE(COUNT(*), 0) FROM public.orders) as total_orders,
     (SELECT COALESCE(COUNT(*), 0) FROM public.orders WHERE status = 'completed') as completed_orders,
-    (SELECT COALESCE(SUM(amount), 0) FROM public.orders WHERE status = 'completed') as total_revenue,
+    (SELECT COALESCE(SUM(total_amount::decimal / 100), 0) FROM public.orders WHERE status = 'completed') as total_revenue,
     (SELECT COALESCE(COUNT(*), 0) FROM public.orders WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as orders_30d,
-    (SELECT COALESCE(SUM(amount), 0) FROM public.orders WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as revenue_30d,
+    (SELECT COALESCE(SUM(total_amount::decimal / 100), 0) FROM public.orders WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as revenue_30d,
     
     -- Visitor Statistics (if tracking implemented)
     (SELECT COALESCE(SUM(unique_visitors), 0) FROM public.visitor_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days') as visitors_30d,
     (SELECT COALESCE(SUM(page_views), 0) FROM public.visitor_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days') as pageviews_30d;
 
 -- 8. Create function to get recent orders
+DROP FUNCTION IF EXISTS public.get_recent_orders(INTEGER);
 CREATE OR REPLACE FUNCTION public.get_recent_orders(days_limit INTEGER DEFAULT 30)
 RETURNS TABLE (
     id UUID,
-    customer_name TEXT,
-    customer_email TEXT,
-    product_name TEXT,
-    amount DECIMAL,
-    status TEXT,
+    user_id UUID,
+    stripe_payment_intent_id VARCHAR,
+    total_amount INTEGER,
+    currency VARCHAR,
+    status VARCHAR,
+    payment_status VARCHAR,
     created_at TIMESTAMP WITH TIME ZONE
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         o.id,
-        o.customer_name,
-        o.customer_email,
-        o.product_name,
-        o.amount,
+        o.user_id,
+        o.stripe_payment_intent_id,
+        o.total_amount,
+        o.currency,
         o.status,
+        o.payment_status,
         o.created_at
     FROM public.orders o
     WHERE o.created_at >= CURRENT_DATE - INTERVAL '1 day' * days_limit
@@ -142,6 +149,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 9. Create function to get revenue trends
+DROP FUNCTION IF EXISTS public.get_revenue_trend(INTEGER);
 CREATE OR REPLACE FUNCTION public.get_revenue_trend(days_back INTEGER DEFAULT 30)
 RETURNS TABLE (
     date DATE,
@@ -150,12 +158,12 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         o.created_at::DATE as date,
-        COALESCE(SUM(o.amount), 0) as daily_revenue,
+        COALESCE(SUM(o.total_amount::decimal / 100), 0) as daily_revenue,
         COUNT(*)::INTEGER as daily_orders
     FROM public.orders o
-    WHERE o.status = 'completed' 
+    WHERE o.status = 'completed'
     AND o.created_at >= CURRENT_DATE - INTERVAL '1 day' * days_back
     GROUP BY o.created_at::DATE
     ORDER BY date DESC;
@@ -163,6 +171,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 10. Create function to get user growth
+DROP FUNCTION IF EXISTS public.get_user_growth(INTEGER);
 CREATE OR REPLACE FUNCTION public.get_user_growth(days_back INTEGER DEFAULT 30)
 RETURNS TABLE (
     date DATE,

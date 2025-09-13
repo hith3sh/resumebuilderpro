@@ -25,7 +25,17 @@ export async function createPaymentIntent({
   metadata = {}
 }) {
   try {
+    // Get the current session to ensure we have a valid token
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      throw new Error('User not authenticated');
+    }
+
     const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
       body: {
         amount,
         currency,
@@ -34,7 +44,10 @@ export async function createPaymentIntent({
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase function error:', error);
+      throw error;
+    }
     
     return {
       clientSecret: data.clientSecret,

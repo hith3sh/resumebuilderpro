@@ -21,8 +21,18 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
     setError(null);
     
     try {
+      // Get the current session to ensure we have a valid token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
       // Create a Checkout Session via our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           items,
           totalAmount,
@@ -35,7 +45,7 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
 
       if (error) {
         console.error('Error creating checkout session:', error);
-        setError('Failed to create checkout session');
+        setError(`Failed to create checkout session: ${error.message}`);
         throw error;
       }
 

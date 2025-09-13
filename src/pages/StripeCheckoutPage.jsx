@@ -6,11 +6,7 @@ import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import StripeCheckoutForm from '@/components/StripeCheckoutForm';
-import SimpleStripeForm from '@/components/SimpleStripeForm';
-import WorkingStripeForm from '@/components/WorkingStripeForm';
 import EmbeddedStripeCheckout from '@/components/EmbeddedStripeCheckout';
-import { createPaymentIntent } from '@/api/StripeApi';
 import { formatCurrency } from '@/api/StripeApi';
 
 // Function to get the correct image based on product title
@@ -30,7 +26,6 @@ const StripeCheckoutPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [clientSecret, setClientSecret] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -74,49 +69,9 @@ const StripeCheckoutPage = () => {
     console.log('Setting up checkout - only should happen once');
     setItems(checkoutItems);
     setTotalAmount(total);
-    
-    // Initialize payment intents for backup forms (for local development)
-    initializePayment(checkoutItems, total);
+    setIsLoading(false);
   }, [location.state, user, navigate, toast]);
 
-  const initializePayment = async (checkoutItems, total) => {
-    try {
-      setIsLoading(true);
-      console.log('Initializing payment with:', { checkoutItems, total });
-      
-      const paymentData = await createPaymentIntent({
-        items: checkoutItems,
-        amount: total,
-        currency: 'USD',
-        metadata: {
-          source: 'website',
-          user_email: user.email,
-        }
-      });
-
-      console.log('Payment data received:', paymentData);
-      setClientSecret(paymentData.clientSecret);
-      console.log('Client secret set:', paymentData.clientSecret);
-    } catch (error) {
-      console.error('Error creating payment intent:', error);
-      toast({
-        title: "Payment Setup Error",
-        description: "Unable to initialize payment. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePaymentSuccess = (paymentIntent) => {
-    console.log('Payment succeeded:', paymentIntent);
-    // The StripeCheckoutForm will handle navigation to success page
-  };
-
-  const handlePaymentError = (error) => {
-    console.error('Payment failed:', error);
-  };
 
   return (
     <>
@@ -210,7 +165,6 @@ const StripeCheckoutPage = () => {
                       user_email: user.email,
                     }}
                   />
-                  <hr style={{margin: '20px 0'}} />
                 </div>
               )}
               
