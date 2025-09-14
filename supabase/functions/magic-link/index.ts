@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from "./cors.ts";
+import { corsHeaders } from "./core.ts";
 Deno.serve(async (req)=>{
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
@@ -18,7 +18,7 @@ Deno.serve(async (req)=>{
       type: 'magiclink',
       email: email,
       options: {
-        redirectTo: `${Deno.env.get('SITE_URL') || 'http://localhost:3000'}/profile`
+        redirectTo: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/profile`
       }
     });
     if (error) {
