@@ -13,26 +13,52 @@ const SuccessPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const sessionId = searchParams.get('session_id');
   const paymentIntentId = searchParams.get('payment_intent');
-  const isPaymentSuccess = !!paymentIntentId;
+  const isPaymentSuccess = !!(sessionId || paymentIntentId);
 
   useEffect(() => {
-    if (paymentIntentId) {
+    if (sessionId || paymentIntentId) {
       fetchOrderDetails();
     }
-  }, [paymentIntentId]);
+  }, [sessionId, paymentIntentId]);
 
   const fetchOrderDetails = async () => {
     try {
       setLoading(true);
-      // Note: We'd need to modify getOrder to search by payment_intent_id
-      // For now, we'll just acknowledge the payment success
-      toast({
-        title: "Payment Successful!",
-        description: "Your payment has been processed successfully.",
-      });
+
+      if (sessionId) {
+        // For embedded checkout, we get session_id
+        console.log('Processing successful checkout with session:', sessionId);
+        toast({
+          title: "Payment Successful!",
+          description: "Your payment has been processed successfully. We're setting up your account!",
+        });
+
+        // For guest checkout, account creation happens in webhook
+        // Show appropriate message
+        if (!paymentIntentId) {
+          toast({
+            title: "Account Created!",
+            description: "An account has been created for you. Check your email for login details.",
+            duration: 5000,
+          });
+        }
+      } else if (paymentIntentId) {
+        // For direct payment intents
+        console.log('Processing payment intent:', paymentIntentId);
+        toast({
+          title: "Payment Successful!",
+          description: "Your payment has been processed successfully.",
+        });
+      }
     } catch (error) {
-      console.error('Error fetching order:', error);
+      console.error('Error processing success:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'There was an issue processing your payment confirmation.',
+      });
     } finally {
       setLoading(false);
     }
@@ -73,12 +99,20 @@ const SuccessPage = () => {
             {isPaymentSuccess ? 'Payment Successful!' : 'Thank You!'}
           </h1>
           <p className="text-gray-600 text-lg mb-6">
-            {isPaymentSuccess 
+            {isPaymentSuccess
               ? 'Your payment has been processed successfully. We will start working on your resume right away!'
               : 'Your information has been submitted successfully. We will be in touch shortly to get started on your resume!'
             }
           </p>
-          
+
+          {sessionId && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <p className="text-green-800 text-sm">
+                <strong>Account Setup:</strong> {paymentIntentId ? 'Your order is linked to your account.' : 'An account has been created for you using your email. Check your inbox for login details!'}
+              </p>
+            </div>
+          )}
+
           {isPaymentSuccess && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-blue-800 text-sm">
@@ -86,7 +120,7 @@ const SuccessPage = () => {
               </p>
             </div>
           )}
-          
+
           <p className="text-gray-500 mb-8">You will receive an email confirmation shortly.</p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

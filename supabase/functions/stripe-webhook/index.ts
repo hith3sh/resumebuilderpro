@@ -174,6 +174,7 @@ serve(async (req) => {
           if (profileError) {
             console.error('Error creating profile:', profileError)
           }
+
         }
 
         // Create the order record
@@ -221,6 +222,26 @@ serve(async (req) => {
         }
 
         console.log('Guest checkout completed successfully:', order.id)
+
+        // Send welcome/confirmation email after successful order creation
+        try {
+          await supabase.functions.invoke('send-welcome-email', {
+            body: {
+              email: guestEmail,
+              firstName: session.metadata?.firstName || null,
+              lastName: session.metadata?.lastName || null,
+              isNewAccount: isNewAccount,
+              orderId: order.id,
+              orderTotal: `$${(session.amount_total / 100).toFixed(2)}`,
+              temporaryPassword: isNewAccount ? randomPassword : null,
+              loginUrl: `${Deno.env.get('SITE_URL') || 'https://your-domain.com'}/login`
+            }
+          })
+          console.log(`${isNewAccount ? 'Welcome' : 'Confirmation'} email sent successfully`)
+        } catch (emailError) {
+          console.error('Error sending email:', emailError)
+          // Don't fail the whole process if email fails
+        }
       } else {
         // Regular authenticated checkout
         const { data: updatedOrder, error: orderError } = await supabase
