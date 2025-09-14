@@ -50,10 +50,10 @@ const StripeCheckoutPage = () => {
       return;
     }
 
-    // Check if this is a guest checkout or requires authentication
-    const isGuestCheckout = location.state?.isGuest;
-    const guestCheckoutData = location.state?.guestData;
+    // Check if this is a guest checkout
+    const isGuestCheckout = location.state?.isGuest || !user;
 
+    // For guest checkout, we don't require login
     if (!isGuestCheckout && !user) {
       toast({
         title: "Please log in",
@@ -75,8 +75,8 @@ const StripeCheckoutPage = () => {
     console.log('Setting up checkout - only should happen once');
     setItems(checkoutItems);
     setTotalAmount(total);
-    setIsGuest(isGuestCheckout || false);
-    setGuestData(guestCheckoutData || null);
+    setIsGuest(isGuestCheckout);
+    setGuestData(null); // We'll get email from Stripe
     setIsLoading(false);
   }, [location.state, user, navigate, toast]);
 
@@ -121,18 +121,14 @@ const StripeCheckoutPage = () => {
               </div>
 
               {/* Guest Info Section */}
-              {isGuest && guestData && (
+              {isGuest && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-center mb-2">
                     <User className="w-4 h-4 mr-2 text-blue-600" />
-                    <h3 className="font-medium text-blue-900">Customer Details</h3>
+                    <h3 className="font-medium text-blue-900">Guest Checkout</h3>
                   </div>
-                  <p className="text-sm text-blue-700">
-                    {guestData.firstName} {guestData.lastName}
-                  </p>
-                  <p className="text-sm text-blue-700">{guestData.email}</p>
                   <p className="text-xs text-blue-600 mt-2">
-                    ✨ An account will be created for you after payment
+                    An account will be created for you after successful payment
                   </p>
                 </div>
               )}
@@ -191,14 +187,11 @@ const StripeCheckoutPage = () => {
                     items={items}
                     totalAmount={totalAmount}
                     isGuest={isGuest}
-                    guestData={guestData}
+                    guestData={null}
                     metadata={{
-                      user_email: isGuest ? guestData?.email : user?.email,
+                      user_email: user?.email || 'guest_checkout',
                       isGuest: isGuest,
-                      ...(isGuest && guestData ? {
-                        firstName: guestData.firstName,
-                        lastName: guestData.lastName
-                      } : {})
+                      checkout_type: isGuest ? 'guest' : 'authenticated'
                     }}
                   />
                 </div>

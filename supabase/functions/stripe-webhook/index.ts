@@ -119,11 +119,12 @@ serve(async (req) => {
 
       if (isGuestCheckout) {
         console.log('Processing guest checkout completion')
-        const guestEmail = session.metadata?.guestEmail
+        // Get email from Stripe customer info instead of metadata
+        const guestEmail = session.customer_details?.email || session.customer_email
         const items = session.metadata?.items ? JSON.parse(session.metadata.items) : []
 
         if (!guestEmail) {
-          console.error('Guest email missing from session metadata')
+          console.error('Guest email missing from session customer details')
           return
         }
 

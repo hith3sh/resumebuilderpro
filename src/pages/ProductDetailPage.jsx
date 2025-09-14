@@ -4,12 +4,10 @@ import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { getProduct } from '@/api/ProductsApi';
 import { formatCurrency } from '@/api/StripeApi';
-import { createGuestCheckout } from '@/api/GuestCheckoutApi';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ShoppingCart, ArrowLeft, Info, Star, User } from 'lucide-react';
+import { Loader2, ShoppingCart, ArrowLeft, Info, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import GuestCheckoutModal from '@/components/GuestCheckoutModal';
 
 // Function to get the correct image based on product title
 const getProductImage = (title) => {
@@ -30,7 +28,6 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showGuestCheckout, setShowGuestCheckout] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -56,71 +53,28 @@ const ProductDetailPage = () => {
   const handlePurchase = async () => {
     if (!product) return;
 
-    // If user is logged in, go to regular checkout
-    if (user) {
-      setIsProcessing(true);
-
-      try {
-        // Navigate to Stripe checkout page with product data
-        navigate('/stripe-checkout', {
-          state: {
-            items: [{
-              product_id: product.id,
-              product_name: product.title,
-              price: product.price_in_cents,
-              quantity: 1
-            }]
-          }
-        });
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Checkout Error',
-          description: 'There was a problem initiating checkout. Please try again.',
-        });
-        setIsProcessing(false);
-      }
-      return;
-    }
-
-    // If no user, show guest checkout modal
-    setShowGuestCheckout(true);
-  };
-
-  const handleGuestCheckout = async (guestData) => {
     setIsProcessing(true);
 
     try {
-      // Store guest data in sessionStorage
-      const guestCheckoutData = {
-        email: guestData.email,
-        firstName: guestData.firstName,
-        lastName: guestData.lastName,
-        isGuest: true,
-        timestamp: Date.now()
-      };
-
-      sessionStorage.setItem('guestCheckoutData', JSON.stringify(guestCheckoutData));
-
-      // Navigate to the regular Stripe checkout page with guest flag
+      // Navigate to Stripe checkout page with product data
+      // Stripe will handle guest vs authenticated users automatically
       navigate('/stripe-checkout', {
         state: {
-          items: guestData.items,
-          isGuest: true,
-          guestData: guestCheckoutData
+          items: [{
+            product_id: product.id,
+            product_name: product.title,
+            price: product.price_in_cents,
+            quantity: 1
+          }],
+          isGuest: !user // Flag to indicate if this is a guest checkout
         }
       });
-
-      setShowGuestCheckout(false);
-
     } catch (error) {
-      console.error('Guest checkout error:', error);
       toast({
         variant: 'destructive',
         title: 'Checkout Error',
-        description: 'There was a problem starting your checkout. Please try again.',
+        description: 'There was a problem initiating checkout. Please try again.',
       });
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -264,45 +218,24 @@ const ProductDetailPage = () => {
                 transition={{ duration: 0.5, delay: 0.5 }}
                 className="pt-6"
               >
-                {user ? (
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    onClick={handlePurchase}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    ) : (
-                      <ShoppingCart className="mr-2 h-5 w-5" />
-                    )}
-                    {isProcessing ? 'Processing...' : 'Purchase Service'}
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    <Button
-                      size="lg"
-                      className="w-full"
-                      onClick={handlePurchase}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      ) : (
-                        <ShoppingCart className="mr-2 h-5 w-5" />
-                      )}
-                      {isProcessing ? 'Processing...' : 'Quick Checkout'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full"
-                      onClick={handleLogin}
-                    >
-                      <User className="mr-2 h-5 w-5" />
-                      Login to Purchase
-                    </Button>
-                  </div>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={handlePurchase}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                  )}
+                  {isProcessing ? 'Processing...' : 'Purchase Service'}
+                </Button>
+
+                {!user && (
+                  <p className="text-sm text-gray-500 mt-2 text-center">
+                    No account needed - we'll create one for you after purchase
+                  </p>
                 )}
               </motion.div>
 
@@ -326,12 +259,6 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      <GuestCheckoutModal
-        isOpen={showGuestCheckout}
-        onClose={() => setShowGuestCheckout(false)}
-        onProceedToCheckout={handleGuestCheckout}
-        product={product}
-      />
     </>
   );
 };

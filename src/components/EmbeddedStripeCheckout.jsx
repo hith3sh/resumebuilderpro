@@ -30,13 +30,9 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {}, isGuest = f
             items,
             totalAmount,
             isGuest: true,
-            guestEmail: guestData?.email,
             metadata: {
               source: 'embedded_checkout_guest',
               isGuest: true,
-              guestEmail: guestData?.email,
-              firstName: guestData?.firstName,
-              lastName: guestData?.lastName,
               ...metadata
             }
           }
