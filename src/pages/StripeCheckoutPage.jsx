@@ -30,7 +30,6 @@ const StripeCheckoutPage = () => {
   const [items, setItems] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [isGuest, setIsGuest] = useState(false);
-  const [guestData, setGuestData] = useState(null);
   const initializingRef = useRef(false);
 
   // Initialize checkout data
@@ -76,7 +75,6 @@ const StripeCheckoutPage = () => {
     setItems(checkoutItems);
     setTotalAmount(total);
     setIsGuest(isGuestCheckout);
-    setGuestData(null); // We'll get email from Stripe
     setIsLoading(false);
   }, [location.state, user, navigate, toast]);
 

@@ -8,7 +8,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {}, isGuest = false, guestData = null }) => {
+const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {}, isGuest = false }) => {
   const [error, setError] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
 
