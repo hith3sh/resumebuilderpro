@@ -184,14 +184,11 @@ const LoginPage = () => {
             <ArrowLeft className="h-6 w-6" />
           </Button>
           <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-                <img className="h-10 w-auto" alt="ProResume Designs Logo" src="/logosmall.webp" />
-              </div>
-              <span className="text-2xl font-bold text-pr-blue-600">ProResume Designs</span>
+            <Link to="/" className="inline-flex items-center mb-4">
+              <img className="h-16 w-auto" alt="ProResume Designs Logo" src="/logo.webp" />
             </Link>
             <h1 className="text-3xl font-bold text-gray-800">
-              {authMode === 'magiclink' ? 'Access Your Account' : authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
+              {authMode === 'magiclink' ? 'Customer Portal' : authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
             </h1>
             <p className="text-gray-500">
               {authMode === 'magiclink'

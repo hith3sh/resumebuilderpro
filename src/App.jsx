@@ -23,6 +23,8 @@ import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
 import DisclaimerPage from '@/pages/DisclaimerPage';
 import PasswordSetupPage from '@/pages/PasswordSetupPage';
 import ConfirmAnalysisPage from '@/pages/ConfirmAnalysisPage';
+import GuestCheckoutPage from '@/pages/GuestCheckoutPage';
+import GuestSuccessPage from '@/pages/GuestSuccessPage';
 import { usePurchaseIntent } from '@/hooks/usePurchaseIntent';
 
 // Component that handles purchase intent inside Router context
@@ -40,7 +42,7 @@ function AppContent() {
             <Route path="about" element={<AboutUsPage />} />
             <Route path="contact" element={<ContactPage />} />
             <Route path="login" element={<LoginPage />} />
-            <Route 
+            <Route
               path="stripe-checkout"
               element={
                 <ProtectedRoute>
@@ -48,6 +50,8 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            <Route path="guest-checkout" element={<GuestCheckoutPage />} />
+            <Route path="guest-success" element={<GuestSuccessPage />} />
             <Route path="terms-of-service" element={<TermsOfServicePage />} />
             <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="disclaimer" element={<DisclaimerPage />} />

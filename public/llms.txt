@@ -1,13 +1,16 @@
 ## Pages
 - [- ProResume Designs](/success): No description available
 - [Admin Dashboard - ProResume Designs](/admindashboard): No description available
+- [Checkout - ProResume Designs](/stripecheckout): Complete your purchase securely with Stripe.
 - [Client Testimonials - ProResume Designs](/testimonials): Read success stories from thousands of professionals who landed their dream jobs with help from ProResume Designs. See what our clients are saying.
+- [Confirmation Error - ProResume Designs](/confirmanalysis): No description available
 - [Contact Us - ProResume Designs](/contact): Have a question? Get in touch with the ProResume Designs team. We
 - [Disclaimer - ProResume Designs](/disclaimer): Disclaimer for ProResume Designs
 - [Enhanced Admin Dashboard - ProResume Designs](/enhancedadmindashboard): No description available
 - [Job Advice Blog - ProResume Designs](/jobadvice): Get the latest job search tips, resume advice, and career guidance from the experts at ProResume Designs. Our blog helps you stay ahead in your career.
 - [Login - ProResume Designs](/login): Access your ProResume Designs customer portal.
 - [My Dashboard - ProResume Designs](/dashboard): Manage your orders, download your resume, and update your profile.
+- [Order Complete - ProResume Designs](/guestsuccess): Your order has been successfully completed.
 - [Our Story - ProResume Designs](/aboutus): Discover the story behind ProResume Designs. We are a team of career experts and storytellers dedicated to crafting resumes that open doors to dream jobs.
 - [Post-Purchase Questionnaire - ProResume Designs](/questionnaire): Please provide us with more details to get started on your professional resume.
 - [Privacy Policy - ProResume Designs](/privacypolicy): Learn how ProResume Designs collects, uses, and protects your personal information.

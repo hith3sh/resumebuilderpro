@@ -131,6 +131,58 @@ serve(async (req) => {
       }
 
       console.log('Order updated successfully:', updatedOrder)
+    }
+    // Handle payment intent succeeded (for guest checkout)
+    else if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent
+      console.log('Payment intent succeeded:', paymentIntent.id)
+
+      // Check if this is a guest checkout
+      if (paymentIntent.metadata?.isGuest === 'true') {
+        console.log('Processing guest checkout payment:', paymentIntent.metadata.guestEmail)
+
+        // Update order status if it exists (it might already be processed by the client)
+        const { data: existingOrder, error: findError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('stripe_payment_intent_id', paymentIntent.id)
+          .single()
+
+        if (existingOrder) {
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({
+              status: 'completed',
+              payment_status: 'paid',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingOrder.id)
+
+          if (updateError) {
+            console.error('Error updating guest order:', updateError)
+          } else {
+            console.log('Guest order updated successfully')
+          }
+        } else {
+          console.log('Guest order not found - likely processed by client already')
+        }
+      } else {
+        // Regular payment intent (authenticated checkout)
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({
+            status: 'completed',
+            payment_status: 'paid',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_payment_intent_id', paymentIntent.id)
+
+        if (orderError) {
+          console.error('Error updating order:', orderError)
+        } else {
+          console.log('Order updated successfully')
+        }
+      }
     } else {
       console.log(`Unhandled event type: ${event.type}`)
     }
