@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -29,6 +29,8 @@ const StripeCheckoutPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestData, setGuestData] = useState(null);
   const initializingRef = useRef(false);
 
   // Initialize checkout data
@@ -48,7 +50,11 @@ const StripeCheckoutPage = () => {
       return;
     }
 
-    if (!user) {
+    // Check if this is a guest checkout or requires authentication
+    const isGuestCheckout = location.state?.isGuest;
+    const guestCheckoutData = location.state?.guestData;
+
+    if (!isGuestCheckout && !user) {
       toast({
         title: "Please log in",
         description: "You need to be logged in to make a purchase.",
@@ -62,13 +68,15 @@ const StripeCheckoutPage = () => {
     initializingRef.current = true;
 
     const checkoutItems = location.state.items;
-    const total = checkoutItems.reduce((sum, item) => 
+    const total = checkoutItems.reduce((sum, item) =>
       sum + (item.price * (item.quantity || 1)), 0
     );
 
     console.log('Setting up checkout - only should happen once');
     setItems(checkoutItems);
     setTotalAmount(total);
+    setIsGuest(isGuestCheckout || false);
+    setGuestData(guestCheckoutData || null);
     setIsLoading(false);
   }, [location.state, user, navigate, toast]);
 
@@ -92,8 +100,12 @@ const StripeCheckoutPage = () => {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <h1 className="text-3xl font-bold text-gray-900">Secure Checkout</h1>
-            <p className="text-gray-600 mt-1">Complete your purchase safely and securely</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isGuest ? 'Guest Checkout' : 'Secure Checkout'}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {isGuest ? 'Complete your purchase securely as a guest' : 'Complete your purchase safely and securely'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -107,6 +119,23 @@ const StripeCheckoutPage = () => {
                 <ShoppingCart className="w-5 h-5 mr-2 text-pr-blue-600" />
                 <h2 className="text-xl font-semibold">Order Summary</h2>
               </div>
+
+              {/* Guest Info Section */}
+              {isGuest && guestData && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center mb-2">
+                    <User className="w-4 h-4 mr-2 text-blue-600" />
+                    <h3 className="font-medium text-blue-900">Customer Details</h3>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    {guestData.firstName} {guestData.lastName}
+                  </p>
+                  <p className="text-sm text-blue-700">{guestData.email}</p>
+                  <p className="text-xs text-blue-600 mt-2">
+                    ✨ An account will be created for you after payment
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-4">
                 {items.map((item, index) => (
@@ -158,11 +187,18 @@ const StripeCheckoutPage = () => {
                 </div>
               ) : (
                 <div>
-                  <EmbeddedStripeCheckout 
+                  <EmbeddedStripeCheckout
                     items={items}
                     totalAmount={totalAmount}
+                    isGuest={isGuest}
+                    guestData={guestData}
                     metadata={{
-                      user_email: user.email,
+                      user_email: isGuest ? guestData?.email : user?.email,
+                      isGuest: isGuest,
+                      ...(isGuest && guestData ? {
+                        firstName: guestData.firstName,
+                        lastName: guestData.lastName
+                      } : {})
                     }}
                   />
                 </div>

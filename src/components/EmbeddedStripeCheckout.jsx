@@ -8,7 +8,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
+const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {}, isGuest = false, guestData = null }) => {
   const [error, setError] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
 
@@ -21,46 +21,78 @@ const EmbeddedStripeCheckout = ({ items, totalAmount, metadata = {} }) => {
     setError(null);
     
     try {
-      // Get the current session to ensure we have a valid token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      console.log('Session check:', { 
-        hasSession: !!session, 
-        hasUser: !!session?.user, 
-        sessionError,
-        accessToken: session?.access_token?.substring(0, 20) + '...' 
-      });
-      
-      if (sessionError || !session || !session.access_token) {
-        throw new Error('User not authenticated - no valid session');
-      }
+      if (isGuest) {
+        // For guest checkout, use the create-checkout-session function without auth
+        console.log('Creating guest checkout session');
 
-      console.log('Making request to create-checkout-session with auth header');
-
-      // Create a Checkout Session via our Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
-          items,
-          totalAmount,
-          metadata: {
-            source: 'embedded_checkout',
-            ...metadata
+        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+          body: {
+            items,
+            totalAmount,
+            isGuest: true,
+            guestEmail: guestData?.email,
+            metadata: {
+              source: 'embedded_checkout_guest',
+              isGuest: true,
+              guestEmail: guestData?.email,
+              firstName: guestData?.firstName,
+              lastName: guestData?.lastName,
+              ...metadata
+            }
           }
+        });
+
+        if (error) {
+          console.error('Guest checkout session error:', error);
+          setError(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
+          throw error;
         }
-      });
 
-      if (error) {
-        console.error('Supabase function error details:', error);
-        setError(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
-        throw error;
+        console.log('Guest checkout session created successfully:', data);
+        setClientSecret(data.clientSecret);
+        return data.clientSecret;
+      } else {
+        // Regular authenticated checkout
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        console.log('Session check:', {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          sessionError,
+          accessToken: session?.access_token?.substring(0, 20) + '...'
+        });
+
+        if (sessionError || !session || !session.access_token) {
+          throw new Error('User not authenticated - no valid session');
+        }
+
+        console.log('Making request to create-checkout-session with auth header');
+
+        // Create a Checkout Session via our Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: {
+            items,
+            totalAmount,
+            metadata: {
+              source: 'embedded_checkout',
+              ...metadata
+            }
+          }
+        });
+
+        if (error) {
+          console.error('Supabase function error details:', error);
+          setError(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
+          throw error;
+        }
+
+        console.log('Checkout session created successfully:', data);
+        setClientSecret(data.clientSecret);
+        return data.clientSecret;
       }
-
-      console.log('Checkout session created successfully:', data);
-      setClientSecret(data.clientSecret);
-      return data.clientSecret;
     } catch (err) {
       console.error('Fetch client secret error:', err);
       setError(err.message || 'Unknown error occurred');

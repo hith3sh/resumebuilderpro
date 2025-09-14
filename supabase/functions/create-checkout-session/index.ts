@@ -32,75 +32,95 @@ serve(async (req) => {
       console.error('STRIPE_SECRET_KEY not found in environment variables')
       return new Response(
         JSON.stringify({ error: 'Stripe API key not configured' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    // Create a supabase client with the Auth context from the request
-    const authHeader = req.headers.get('authorization')
-    console.log('Auth header received:', authHeader ? 'YES' : 'NO')
-    
-    if (!authHeader) {
-      console.error('No auth header in request')
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
         {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    console.log('Token length:', token.length)
+    const { items, totalAmount, metadata = {}, isGuest = false, guestEmail } = await req.json()
 
-    // Create a client with the user's JWT token
-    const userSupabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader }
-        }
-      }
-    )
+    // Handle guest checkout
+    if (isGuest) {
+      console.log('Processing guest checkout for:', guestEmail)
 
-    // Verify the JWT by decoding it and checking the user
-    try {
-      // Decode the JWT to get user info without needing a session
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const userId = payload.sub
-      const userRole = payload.role
-      
-      console.log('JWT payload:', { userId, userRole, exp: payload.exp })
-      
-      if (!userId || userRole !== 'authenticated') {
-        throw new Error('Invalid token payload')
+      if (!guestEmail) {
+        return new Response(
+          JSON.stringify({ error: 'Guest email required' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
       }
-      
-      // Check if token is expired
-      if (payload.exp && payload.exp < Date.now() / 1000) {
-        throw new Error('Token expired')
-      }
+    } else {
+      // Regular authenticated checkout
+      const authHeader = req.headers.get('authorization')
+      console.log('Auth header received:', authHeader ? 'YES' : 'NO')
 
-      // Create a user object for our use
-      var user = { id: userId }
-      console.log('User verified successfully via JWT:', userId)
-    } catch (decodeError) {
-      console.error('JWT decode/verification failed:', decodeError)
-      return new Response(
-        JSON.stringify({ error: 'Invalid JWT token', details: decodeError.message }),
+      if (!authHeader) {
+        console.error('No auth header in request')
+        return new Response(
+          JSON.stringify({ error: 'No authorization header' }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+    }
+
+    let user = null;
+
+    if (!isGuest) {
+      const authHeader = req.headers.get('authorization')
+      const token = authHeader.replace('Bearer ', '')
+      console.log('Token length:', token.length)
+
+      // Create a client with the user's JWT token
+      const userSupabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
         {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          global: {
+            headers: { Authorization: authHeader }
+          }
         }
       )
-    }
 
-    const { items, totalAmount, metadata = {} } = await req.json()
+      // Verify the JWT by decoding it and checking the user
+      try {
+        // Decode the JWT to get user info without needing a session
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        const userId = payload.sub
+        const userRole = payload.role
+
+        console.log('JWT payload:', { userId, userRole, exp: payload.exp })
+
+        if (!userId || userRole !== 'authenticated') {
+          throw new Error('Invalid token payload')
+        }
+
+        // Check if token is expired
+        if (payload.exp && payload.exp < Date.now() / 1000) {
+          throw new Error('Token expired')
+        }
+
+        // Create a user object for our use
+        user = { id: userId }
+        console.log('User verified successfully via JWT:', userId)
+      } catch (decodeError) {
+        console.error('JWT decode/verification failed:', decodeError)
+        return new Response(
+          JSON.stringify({ error: 'Invalid JWT token', details: decodeError.message }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+    }
 
     // Validate input
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -139,37 +159,51 @@ serve(async (req) => {
     }))
 
     // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig = {
       ui_mode: 'embedded',
       line_items: lineItems,
       mode: 'payment',
       return_url: `${req.headers.get('origin')}/success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
-        userId: user.id,
         items: JSON.stringify(items),
+        isGuest: isGuest.toString(),
+        ...(isGuest ? { guestEmail } : { userId: user.id }),
         ...metadata,
       },
-    })
+    }
 
-    // Create pending order in database
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: user.id,
-        stripe_checkout_session_id: session.id,
-        // We'll use session ID for webhook updates (modern approach)
-        total_amount: totalAmount,
-        currency: 'USD',
-        status: 'pending',
-        payment_status: 'unpaid',
-        metadata: { items, ...metadata },
-      })
-      .select()
-      .single()
+    // Add customer email for guest checkout
+    if (isGuest && guestEmail) {
+      sessionConfig.customer_email = guestEmail
+    }
 
-    if (orderError) {
-      console.error('Error creating order:', orderError)
-      // Don't fail the checkout session creation, just log the error
+    const session = await stripe.checkout.sessions.create(sessionConfig)
+
+    // For guest checkout, we'll skip creating an order now and handle it in the webhook or success page
+    // For authenticated users, create the order immediately
+    let order = null;
+
+    if (!isGuest && user) {
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          stripe_checkout_session_id: session.id,
+          total_amount: totalAmount,
+          currency: 'USD',
+          status: 'pending',
+          payment_status: 'unpaid',
+          metadata: { items, ...metadata },
+        })
+        .select()
+        .single()
+
+      if (orderError) {
+        console.error('Error creating order:', orderError)
+        // Don't fail the checkout session creation, just log the error
+      } else {
+        order = orderData
+      }
     }
 
     // Create order items if order was created successfully

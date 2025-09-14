@@ -91,27 +91,23 @@ const ProductDetailPage = () => {
     setIsProcessing(true);
 
     try {
-      // Create guest checkout session
-      const result = await createGuestCheckout({
-        items: guestData.items,
+      // Store guest data in sessionStorage
+      const guestCheckoutData = {
         email: guestData.email,
-        amount: guestData.amount,
-        currency: guestData.currency,
-        metadata: {
-          firstName: guestData.firstName,
-          lastName: guestData.lastName,
-          guestCheckout: true
-        }
-      });
+        firstName: guestData.firstName,
+        lastName: guestData.lastName,
+        isGuest: true,
+        timestamp: Date.now()
+      };
 
-      // Navigate to guest checkout page
-      navigate('/guest-checkout', {
+      sessionStorage.setItem('guestCheckoutData', JSON.stringify(guestCheckoutData));
+
+      // Navigate to the regular Stripe checkout page with guest flag
+      navigate('/stripe-checkout', {
         state: {
-          tempOrderId: result.tempOrderId,
-          clientSecret: result.clientSecret,
-          paymentIntentId: result.paymentIntentId,
-          guestData,
-          product
+          items: guestData.items,
+          isGuest: true,
+          guestData: guestCheckoutData
         }
       });
 

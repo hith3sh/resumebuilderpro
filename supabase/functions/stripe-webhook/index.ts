@@ -114,23 +114,131 @@ serve(async (req) => {
 
       console.log('Supabase connection successful')
 
-      // Update order status
-      const { data: updatedOrder, error: orderError } = await supabase
-        .from('orders')
-        .update({
-          status: 'completed',
-          payment_status: 'paid',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('stripe_checkout_session_id', session.id)
-        .select()
+      // Check if this is a guest checkout
+      const isGuestCheckout = session.metadata?.isGuest === 'true'
 
-      if (orderError) {
-        console.error('Error updating order:', orderError)
-        throw orderError
+      if (isGuestCheckout) {
+        console.log('Processing guest checkout completion')
+        const guestEmail = session.metadata?.guestEmail
+        const items = session.metadata?.items ? JSON.parse(session.metadata.items) : []
+
+        if (!guestEmail) {
+          console.error('Guest email missing from session metadata')
+          return
+        }
+
+        // Check if user already exists
+        const { data: existingUsers } = await supabase.auth.admin.listUsers()
+        const existingUser = existingUsers.users.find(u => u.email === guestEmail)
+
+        let userId;
+        let isNewAccount = false;
+
+        if (existingUser) {
+          userId = existingUser.id
+          console.log(`Associating order with existing user: ${guestEmail}`)
+        } else {
+          // Create new user account
+          const randomPassword = Math.random().toString(36).slice(-12) + 'A1!'
+
+          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+            email: guestEmail,
+            password: randomPassword,
+            email_confirm: true,
+            user_metadata: {
+              created_via: 'guest_checkout',
+              checkout_session_id: session.id
+            }
+          })
+
+          if (createError) {
+            console.error('Error creating user account:', createError)
+            throw createError
+          }
+
+          userId = newUser.user.id
+          isNewAccount = true
+          console.log(`Created new user account: ${guestEmail}`)
+
+          // Create user profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: guestEmail,
+              role: 'user',
+              created_via: 'guest_checkout'
+            })
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError)
+          }
+        }
+
+        // Create the order record
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            user_id: userId,
+            stripe_checkout_session_id: session.id,
+            total_amount: session.amount_total,
+            currency: session.currency?.toUpperCase() || 'USD',
+            status: 'completed',
+            payment_status: 'paid',
+            metadata: {
+              ...session.metadata,
+              isGuest: true,
+              guestEmail,
+              created_via: 'guest_checkout_webhook'
+            },
+          })
+          .select()
+          .single()
+
+        if (orderError) {
+          console.error('Error creating guest order:', orderError)
+          throw orderError
+        }
+
+        // Create order items
+        if (items && Array.isArray(items)) {
+          const orderItems = items.map(item => ({
+            order_id: order.id,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            price: item.price,
+            quantity: item.quantity || 1,
+          }))
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems)
+
+          if (itemsError) {
+            console.error('Error creating guest order items:', itemsError)
+          }
+        }
+
+        console.log('Guest checkout completed successfully:', order.id)
+      } else {
+        // Regular authenticated checkout
+        const { data: updatedOrder, error: orderError } = await supabase
+          .from('orders')
+          .update({
+            status: 'completed',
+            payment_status: 'paid',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_checkout_session_id', session.id)
+          .select()
+
+        if (orderError) {
+          console.error('Error updating order:', orderError)
+          throw orderError
+        }
+
+        console.log('Order updated successfully:', updatedOrder)
       }
-
-      console.log('Order updated successfully:', updatedOrder)
     }
     // Handle payment intent succeeded (for guest checkout)
     else if (event.type === 'payment_intent.succeeded') {

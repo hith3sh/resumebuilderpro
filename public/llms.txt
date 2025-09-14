@@ -1,7 +1,6 @@
 ## Pages
 - [- ProResume Designs](/success): No description available
 - [Admin Dashboard - ProResume Designs](/admindashboard): No description available
-- [Checkout - ProResume Designs](/stripecheckout): Complete your purchase securely with Stripe.
 - [Client Testimonials - ProResume Designs](/testimonials): Read success stories from thousands of professionals who landed their dream jobs with help from ProResume Designs. See what our clients are saying.
 - [Confirmation Error - ProResume Designs](/confirmanalysis): No description available
 - [Contact Us - ProResume Designs](/contact): Have a question? Get in touch with the ProResume Designs team. We
