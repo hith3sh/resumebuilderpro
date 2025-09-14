@@ -185,8 +185,8 @@ const LoginPage = () => {
           </Button>
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-pr-blue-600 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+                <img className="h-10 w-auto" alt="ProResume Designs Logo" src="/logosmall.webp" />
               </div>
               <span className="text-2xl font-bold text-pr-blue-600">ProResume Designs</span>
             </Link>

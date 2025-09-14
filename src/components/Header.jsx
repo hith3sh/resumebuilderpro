@@ -28,16 +28,16 @@ const Header = () => {
       className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg shadow-sm"
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-24">
           <Link to="/" className="flex items-center space-x-2">
-            <img  className="h-10 w-auto" alt="ProResume Designs Logo" src="https://horizons-cdn.hostinger.com/b5cc3c7a-6a81-4cf7-b6ba-b5b728631238/1575594ce0d9f6d8f9b38680907405e4.png" />
+            <img className="h-12 w-auto" alt="ProResume Designs Logo" src="/logo.webp" />
           </Link>
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <NavLink
                 key={link.name}
                 to={link.path}
-                className="text-gray-600 hover:text-pr-blue-600 transition-colors"
+                className="text-gray-600 hover:text-pr-blue-600 transition-colors text-lg font-medium"
                 style={({ isActive }) => (isActive ? activeLinkStyle : undefined)}
               >
                 {link.name}
