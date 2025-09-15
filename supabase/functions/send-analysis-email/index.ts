@@ -43,29 +43,58 @@ serve(async (req) => {
     console.log('Sending email to:', email)
 
     try {
-      // Use Supabase's built-in email service to actually SEND the email
-      // This method sends the email using Supabase's default email service
+      // Check if user already exists
+      const { data: existingUser, error: getUserError } = await supabase.auth.admin.getUserByEmail(email)
+      
+      if (existingUser && existingUser.user) {
+        // User exists - use signInWithOtp to trigger "Magic Link" template for existing users
+        console.log('User exists, sending magic link for resume analysis')
+        
+        const { data: signInData, error: emailError } = await supabase.auth.signInWithOtp({
+          email: email,
+          options: {
+            emailRedirectTo: confirmationUrl,
+            data: {
+              name: name,
+              ats_score: atsScore,
+              confirmation_token: confirmationToken,
+              analysis_id: analysisId,
+              email_type: 'resume_analysis_existing_user',
+              confirmation_url: confirmationUrl,
+              user_type: 'existing'
+            }
+          }
+        })
 
-      // Use admin.inviteUserByEmail to trigger "Invite User" template for resume analysis
-      const { data: inviteData, error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: confirmationUrl,
-        data: {
-          name: name,
-          ats_score: atsScore,
-          confirmation_token: confirmationToken,
-          analysis_id: analysisId,
-          email_type: 'resume_analysis',
-          confirmation_url: confirmationUrl,
-          invite_type: 'resume_analysis_results'
+        if (emailError) {
+          throw new Error(`Email sending failed for existing user: ${emailError.message}`)
         }
-      })
-
-      if (emailError) {
-        console.error('Supabase email error:', emailError)
-        throw new Error(`Email sending failed: ${emailError.message}`)
+        
+        console.log('Resume analysis email sent to existing user via Magic Link template')
+        
       } else {
-        console.log('Magic link email sent successfully via Supabase built-in service')
-        console.log('Email delivery initiated for:', email)
+        // New user - use admin.inviteUserByEmail to trigger "Invite User" template
+        console.log('New user, sending invite for resume analysis')
+        
+        const { data: inviteData, error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
+          redirectTo: confirmationUrl,
+          data: {
+            name: name,
+            ats_score: atsScore,
+            confirmation_token: confirmationToken,
+            analysis_id: analysisId,
+            email_type: 'resume_analysis_new_user',
+            confirmation_url: confirmationUrl,
+            invite_type: 'resume_analysis_results',
+            user_type: 'new'
+          }
+        })
+
+        if (emailError) {
+          throw new Error(`Email sending failed for new user: ${emailError.message}`)
+        }
+        
+        console.log('Resume analysis email sent to new user via Invite User template')
       }
 
     } catch (emailSendError) {
@@ -75,6 +104,9 @@ serve(async (req) => {
 
       // In development, continue without breaking the flow
       console.log('Continuing without email (development mode)')
+      
+      // Still return success to not break the user flow
+      // The analysis data is saved, they can access it via the confirmation URL
     }
 
     return new Response(
