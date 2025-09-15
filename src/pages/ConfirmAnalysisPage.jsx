@@ -210,11 +210,104 @@ const ConfirmAnalysisPage = () => {
               {analysisData?.analysis_results && (
                 <div className="mt-8 p-6 bg-gray-50 rounded-lg">
                   <h3 className="text-xl font-semibold mb-4">Detailed Analysis</h3>
-                  <div className="prose max-w-none text-gray-700">
-                    {typeof analysisData.analysis_results === 'string'
-                      ? analysisData.analysis_results
-                      : JSON.stringify(analysisData.analysis_results, null, 2)
-                    }
+                  <div className="space-y-4">
+                    {(() => {
+                      const renderAnalysisContent = (data) => {
+                        // Handle different data formats more robustly
+                        let content = [];
+                        
+                        if (typeof data === 'string') {
+                          // Simple string - split by lines
+                          content = data.split('\n').filter(line => line.trim());
+                        } else if (typeof data === 'object' && data !== null) {
+                          // Object - extract meaningful content
+                          
+                          // Look for common feedback fields
+                          const feedbackFields = ['feedback', 'analysis', 'comments', 'suggestions', 'recommendations', 'notes'];
+                          let foundFeedback = false;
+                          
+                          for (const field of feedbackFields) {
+                            if (data[field]) {
+                              if (typeof data[field] === 'string') {
+                                content.push(...data[field].split('\n').filter(line => line.trim()));
+                                foundFeedback = true;
+                              } else if (Array.isArray(data[field])) {
+                                content.push(...data[field].map(item => String(item)));
+                                foundFeedback = true;
+                              }
+                            }
+                          }
+                          
+                          // If no standard feedback fields, extract other meaningful data
+                          if (!foundFeedback) {
+                            Object.entries(data).forEach(([key, value]) => {
+                              // Skip score field as it's displayed separately
+                              if (key === 'score' || key === 'ats_score') return;
+                              
+                              if (typeof value === 'string' && value.trim()) {
+                                if (value.includes('\n')) {
+                                  content.push(...value.split('\n').filter(line => line.trim()));
+                                } else {
+                                  content.push(`${key}: ${value}`);
+                                }
+                              } else if (Array.isArray(value)) {
+                                content.push(`${key}:`);
+                                value.forEach(item => {
+                                  content.push(`• ${String(item)}`);
+                                });
+                              } else if (typeof value === 'object' && value !== null) {
+                                content.push(`${key}:`);
+                                Object.entries(value).forEach(([subKey, subValue]) => {
+                                  content.push(`• ${subKey}: ${String(subValue)}`);
+                                });
+                              } else if (value !== null && value !== undefined) {
+                                content.push(`${key}: ${String(value)}`);
+                              }
+                            });
+                          }
+                        } else {
+                          // Fallback for other types
+                          content = [String(data)];
+                        }
+
+                        // Format each line with appropriate styling
+                        return content.map((line, index) => {
+                          if (!line.trim()) return null;
+                          
+                          // Style different types of feedback
+                          let className = 'flex items-start space-x-2 p-3 rounded-lg ';
+                          let icon = '';
+                          
+                          if (line.includes('✓') || line.includes('👍') || line.toLowerCase().includes('good') || line.toLowerCase().includes('excellent')) {
+                            className += 'bg-green-50 border-l-4 border-green-400';
+                            icon = '✅';
+                          } else if (line.includes('✗') || line.includes('❌') || line.toLowerCase().includes('missing') || line.toLowerCase().includes('error')) {
+                            className += 'bg-red-50 border-l-4 border-red-400';
+                            icon = '❌';
+                          } else if (line.includes('⚠') || line.includes('💡') || line.toLowerCase().includes('consider') || line.toLowerCase().includes('improve')) {
+                            className += 'bg-yellow-50 border-l-4 border-yellow-400';
+                            icon = '💡';
+                          } else if (line.startsWith('•') || line.includes(':')) {
+                            className += 'bg-gray-50 border-l-4 border-gray-400';
+                            icon = '📋';
+                          } else {
+                            className += 'bg-blue-50 border-l-4 border-blue-400';
+                            icon = '📋';
+                          }
+
+                          return (
+                            <div key={index} className={className}>
+                              <span className="text-lg mt-0.5">{icon}</span>
+                              <p className="text-gray-700 flex-1 m-0">
+                                {line.replace(/^[✓✗❌👍⚠💡]\s*/, '')}
+                              </p>
+                            </div>
+                          );
+                        }).filter(Boolean);
+                      };
+
+                      return renderAnalysisContent(analysisData.analysis_results);
+                    })()}
                   </div>
                 </div>
               )}
