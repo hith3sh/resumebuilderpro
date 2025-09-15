@@ -2,8 +2,10 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import Services from '@/components/Services';
 import { motion } from 'framer-motion';
+import { usePageTracking } from '@/hooks/usePageTracking';
 
 const ResumeServicesPage = () => {
+  usePageTracking('/resume-services');
   return (
     <>
       <Helmet>

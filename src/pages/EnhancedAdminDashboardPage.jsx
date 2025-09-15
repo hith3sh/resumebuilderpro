@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
+import { aggregateDailyStats } from '@/hooks/usePageTracking';
 import { 
   LogOut, Users, FileText, Edit, Loader2, DollarSign, TrendingUp, 
   Eye, ShoppingCart, Calendar, Award, Phone, Mail, MapPin,
@@ -144,6 +145,30 @@ const EnhancedAdminDashboardPage = () => {
   const handleRefresh = () => {
     fetchDashboardData(true);
   };
+
+  const handleAggregateStats = async () => {
+    try {
+      setRefreshing(true);
+      toast({ title: "Aggregating visitor stats...", description: "This may take a moment." });
+
+      // Aggregate stats for today and yesterday
+      await aggregateDailyStats(new Date());
+      await aggregateDailyStats(new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+      toast({ title: "Success", description: "Visitor stats aggregated successfully." });
+
+      // Refresh dashboard data
+      fetchDashboardData(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to aggregate visitor stats.",
+        variant: "destructive"
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   const handleEditChange = (e) => {
     setEditingCustomer({ ...editingCustomer, [e.target.name]: e.target.value });
@@ -205,7 +230,7 @@ const EnhancedAdminDashboardPage = () => {
     {
       title: "Resumes Analyzed",
       value: dashboardData.summary.resumes_analyzed || 0,
-      change: `Avg score: ${dashboardData.summary.avg_ats_score || 0}`,
+      change: `${dashboardData.summary.resumes_analyzed_confirmed || 0} confirmed, ${dashboardData.summary.resumes_analyzed_pending || 0} pending`,
       icon: Award,
       color: "text-orange-600"
     },
@@ -257,6 +282,15 @@ const EnhancedAdminDashboardPage = () => {
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+              <Button
+                onClick={handleAggregateStats}
+                variant="outline"
+                size="sm"
+                disabled={refreshing}
+              >
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Aggregate Visitor Stats
               </Button>
             </div>
             <div className="flex items-center space-x-3">
@@ -563,14 +597,22 @@ const EnhancedAdminDashboardPage = () => {
                         <span className="font-semibold">{dashboardData.summary.resumes_uploaded || 0}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Resumes Analyzed</span>
+                        <span className="text-sm text-gray-600">Total Analyzed</span>
                         <span className="font-semibold">{dashboardData.summary.resumes_analyzed || 0}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Analysis Completion Rate</span>
+                        <span className="text-sm text-gray-600">Confirmed (with accounts)</span>
+                        <span className="font-semibold">{dashboardData.summary.resumes_analyzed_confirmed || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Pending confirmation</span>
+                        <span className="font-semibold">{dashboardData.summary.resumes_analyzed_pending || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Conversion Rate (analysis → account)</span>
                         <span className="font-semibold">
-                          {dashboardData.summary.resumes_uploaded > 0 
-                            ? `${((dashboardData.summary.resumes_analyzed / dashboardData.summary.resumes_uploaded) * 100).toFixed(1)}%`
+                          {dashboardData.summary.resumes_analyzed > 0
+                            ? `${((dashboardData.summary.resumes_analyzed_confirmed / dashboardData.summary.resumes_analyzed) * 100).toFixed(1)}%`
                             : "0%"}
                         </span>
                       </div>

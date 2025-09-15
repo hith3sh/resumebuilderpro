@@ -102,7 +102,12 @@ SELECT
     (SELECT COUNT(*) FROM public.profiles WHERE role = 'admin') as admin_users,
     
     -- Resume Statistics
-    (SELECT COUNT(*) FROM public.profiles WHERE ats_score IS NOT NULL) as resumes_analyzed,
+    (SELECT COUNT(*) FROM public.profiles WHERE ats_score IS NOT NULL) as resumes_analyzed_confirmed,
+    (SELECT COUNT(*) FROM public.pending_analysis WHERE ats_score IS NOT NULL) as resumes_analyzed_pending,
+    (SELECT
+        (SELECT COUNT(*) FROM public.profiles WHERE ats_score IS NOT NULL) +
+        (SELECT COUNT(*) FROM public.pending_analysis WHERE ats_score IS NOT NULL)
+    ) as resumes_analyzed,
     (SELECT ROUND(AVG(ats_score), 1) FROM public.profiles WHERE ats_score IS NOT NULL) as avg_ats_score,
     (SELECT COUNT(*) FROM public.profiles WHERE resume_url IS NOT NULL) as resumes_uploaded,
     

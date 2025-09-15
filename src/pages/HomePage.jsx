@@ -10,8 +10,10 @@ import Faq from '@/components/Faq';
 import FinalCta from '@/components/FinalCta';
 import TrustedBy from '@/components/TrustedBy';
 import ResumeGrader from '@/components/ResumeGrader';
+import { usePageTracking } from '@/hooks/usePageTracking';
 
 const HomePage = () => {
+  usePageTracking('/');
   return (
     <>
       <Helmet>
