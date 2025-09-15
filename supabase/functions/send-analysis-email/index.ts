@@ -46,18 +46,17 @@ serve(async (req) => {
       // Use Supabase's built-in email service to actually SEND the email
       // This method sends the email using Supabase's default email service
 
-      const { data: signInData, error: emailError } = await supabase.auth.signInWithOtp({
-        email: email,
-        options: {
-          emailRedirectTo: confirmationUrl,
-          data: {
-            name: name,
-            ats_score: atsScore,
-            confirmation_token: confirmationToken,
-            analysis_id: analysisId,
-            email_type: 'resume_analysis',
-            confirmation_url: confirmationUrl
-          }
+      // Use admin.inviteUserByEmail to trigger "Invite User" template for resume analysis
+      const { data: inviteData, error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: confirmationUrl,
+        data: {
+          name: name,
+          ats_score: atsScore,
+          confirmation_token: confirmationToken,
+          analysis_id: analysisId,
+          email_type: 'resume_analysis',
+          confirmation_url: confirmationUrl,
+          invite_type: 'resume_analysis_results'
         }
       })
 
