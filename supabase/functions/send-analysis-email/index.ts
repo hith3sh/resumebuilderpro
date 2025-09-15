@@ -43,58 +43,56 @@ serve(async (req) => {
     console.log('Sending email to:', email)
 
     try {
-      // Check if user already exists
-      const { data: existingUser, error: getUserError } = await supabase.auth.admin.getUserByEmail(email)
+      // Try to invite user first - if they don't exist, it will work
+      // If they exist, we'll catch the error and handle it
+      console.log('Attempting to send invite for resume analysis')
       
-      if (existingUser && existingUser.user) {
-        // User exists - use admin.generateLink with 'invite' type to trigger "Invite User" template
-        console.log('User exists, generating invite link for resume analysis')
-        
-        const { data: linkData, error: emailError } = await supabase.auth.admin.generateLink({
-          type: 'invite',
-          email: email,
-          options: {
-            redirectTo: confirmationUrl,
-            data: {
-              name: name,
-              ats_score: atsScore,
-              confirmation_token: confirmationToken,
-              analysis_id: analysisId,
-              email_type: 'resume_analysis_existing_user',
-              confirmation_url: confirmationUrl,
-              user_type: 'existing'
+      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: confirmationUrl,
+        data: {
+          name: name,
+          ats_score: atsScore,
+          confirmation_token: confirmationToken,
+          analysis_id: analysisId,
+          email_type: 'resume_analysis',
+          confirmation_url: confirmationUrl,
+          invite_type: 'resume_analysis_results'
+        }
+      })
+
+      if (inviteError) {
+        // Check if error is because user already exists
+        if (inviteError.message && inviteError.message.includes('already been registered')) {
+          console.log('User exists, generating invite link for resume analysis')
+          
+          // User exists - use admin.generateLink with 'invite' type to trigger same "Invite User" template
+          const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+            type: 'invite',
+            email: email,
+            options: {
+              redirectTo: confirmationUrl,
+              data: {
+                name: name,
+                ats_score: atsScore,
+                confirmation_token: confirmationToken,
+                analysis_id: analysisId,
+                email_type: 'resume_analysis_existing',
+                confirmation_url: confirmationUrl,
+                user_type: 'existing'
+              }
             }
-          }
-        })
+          })
 
-        if (emailError) {
-          throw new Error(`Email sending failed for existing user: ${emailError.message}`)
+          if (linkError) {
+            throw new Error(`Email sending failed for existing user: ${linkError.message}`)
+          }
+          
+          console.log('Resume analysis email sent to existing user via Invite User template')
+        } else {
+          // Some other error occurred
+          throw new Error(`Email sending failed: ${inviteError.message}`)
         }
-        
-        console.log('Resume analysis email sent to existing user via Invite User template')
-        
       } else {
-        // New user - use admin.inviteUserByEmail to trigger "Invite User" template
-        console.log('New user, sending invite for resume analysis')
-        
-        const { data: inviteData, error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
-          redirectTo: confirmationUrl,
-          data: {
-            name: name,
-            ats_score: atsScore,
-            confirmation_token: confirmationToken,
-            analysis_id: analysisId,
-            email_type: 'resume_analysis_new_user',
-            confirmation_url: confirmationUrl,
-            invite_type: 'resume_analysis_results',
-            user_type: 'new'
-          }
-        })
-
-        if (emailError) {
-          throw new Error(`Email sending failed for new user: ${emailError.message}`)
-        }
-        
         console.log('Resume analysis email sent to new user via Invite User template')
       }
 
