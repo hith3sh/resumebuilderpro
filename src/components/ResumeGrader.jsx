@@ -273,7 +273,7 @@ const ResumeGrader = () => {
                 name: formData.name,
                 analysisId: insertedData.id,
                 confirmationToken: confirmationToken,
-                confirmationUrl: `${window.location.origin}/confirm-analysis/${confirmationToken}`,
+                confirmationUrl: `${import.meta.env.VITE_SITE_URL || window.location.origin}/confirm-analysis/${confirmationToken}`,
                 atsScore: data.score
             },
         });
