@@ -55,7 +55,8 @@ serve(async (req) => {
             ats_score: atsScore,
             confirmation_token: confirmationToken,
             analysis_id: analysisId,
-            email_type: 'resume_analysis'
+            email_type: 'resume_analysis',
+            confirmation_url: confirmationUrl
           }
         }
       })
