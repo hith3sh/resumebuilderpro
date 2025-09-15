@@ -21,7 +21,6 @@ const Footer = () => {
     ],
     company: [
       { name: 'About Us', path: '/about' },
-      { name: 'Store', path: '/store' },
       { name: 'Job Advice', path: '/job-advice' },
       { name: 'Testimonials', path: '/testimonials' },
     ],

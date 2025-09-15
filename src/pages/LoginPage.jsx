@@ -92,23 +92,25 @@ const LoginPage = () => {
     setCooldown(60);
 
     try {
-      const redirectTo = import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/profile`;
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: redirectTo,
+      // Call your custom Edge Function instead of using Supabase's built-in method
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magic-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
+        body: JSON.stringify({ email }),
       });
 
-      if (error) {
-        throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send magic link');
       }
 
       toast({
         title: "Check your email!",
-        description: `A login link has been sent to ${email}.`,
+        description: `A beautiful login link has been sent to ${email}.`,
       });
       setEmail('');
     } catch (error) {

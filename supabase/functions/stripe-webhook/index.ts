@@ -233,8 +233,7 @@ serve(async (req) => {
               isNewAccount: isNewAccount,
               orderId: order.id,
               orderTotal: `$${(session.amount_total / 100).toFixed(2)}`,
-              temporaryPassword: isNewAccount ? randomPassword : null,
-              loginUrl: `${Deno.env.get('SITE_URL') || 'https://your-domain.com'}/login`
+              temporaryPassword: isNewAccount ? randomPassword : null
             }
           })
           console.log(`${isNewAccount ? 'Welcome' : 'Confirmation'} email sent successfully`)
