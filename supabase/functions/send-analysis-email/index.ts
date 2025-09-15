@@ -13,6 +13,9 @@ serve(async (req) => {
   }
 
   try {
+    const requestBody = await req.json()
+    console.log('🔍 DEBUG - Edge Function Received:', JSON.stringify(requestBody, null, 2))
+    
     const {
       email,
       name,
@@ -20,9 +23,17 @@ serve(async (req) => {
       confirmationToken,
       confirmationUrl,
       atsScore
-    } = await req.json()
+    } = requestBody
+
+    console.log('🔍 DEBUG - Extracted Values:')
+    console.log('  email:', email)
+    console.log('  name:', name)
+    console.log('  confirmationUrl:', confirmationUrl)
+    console.log('  confirmationToken:', confirmationToken)
+    console.log('  atsScore:', atsScore)
 
     if (!email || !name || !confirmationToken || !confirmationUrl || !atsScore) {
+      console.log('❌ DEBUG - Missing required parameters')
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         {
@@ -47,7 +58,10 @@ serve(async (req) => {
       // If they exist, we'll catch the error and handle it
       console.log('Attempting to send invite for resume analysis')
       
-      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      console.log('🔍 DEBUG - About to call inviteUserByEmail with:')
+      console.log('  redirectTo:', confirmationUrl)
+      
+      const invitePayload = {
         redirectTo: confirmationUrl,
         data: {
           name: name,
@@ -58,7 +72,11 @@ serve(async (req) => {
           confirmation_url: confirmationUrl,
           invite_type: 'resume_analysis_results'
         }
-      })
+      }
+      
+      console.log('🔍 DEBUG - Invite Payload:', JSON.stringify(invitePayload, null, 2))
+
+      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, invitePayload)
 
       if (inviteError) {
         // Check if error is because user already exists
@@ -66,7 +84,10 @@ serve(async (req) => {
           console.log('User exists, sending reset password email for resume analysis')
           
           // User exists - use resetPasswordForEmail to trigger "Reset Password" template
-          const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          console.log('🔍 DEBUG - About to call resetPasswordForEmail with:')
+          console.log('  redirectTo:', confirmationUrl)
+          
+          const resetPayload = {
             redirectTo: confirmationUrl,
             data: {
               name: name,
@@ -77,7 +98,11 @@ serve(async (req) => {
               confirmation_url: confirmationUrl,
               user_type: 'existing'
             }
-          })
+          }
+          
+          console.log('🔍 DEBUG - Reset Password Payload:', JSON.stringify(resetPayload, null, 2))
+          
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, resetPayload)
 
           if (resetError) {
             throw new Error(`Email sending failed for existing user: ${resetError.message}`)

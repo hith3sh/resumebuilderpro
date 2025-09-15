@@ -266,16 +266,31 @@ const ResumeGrader = () => {
 
       // Send confirmation email (fallback if function doesn't exist)
       console.log('Sending email...');
+      
+      // DEBUG: Log all URL-related values
+      console.log('🔍 DEBUG - URL Generation:');
+      console.log('  VITE_SITE_URL:', import.meta.env.VITE_SITE_URL);
+      console.log('  window.location.origin:', window.location.origin);
+      console.log('  window.location.href:', window.location.href);
+      console.log('  confirmationToken:', confirmationToken);
+      
+      const finalConfirmationUrl = `${import.meta.env.VITE_SITE_URL || window.location.origin}/confirm-analysis/${confirmationToken}`;
+      console.log('  Final confirmationUrl:', finalConfirmationUrl);
+      
       try {
+        const emailPayload = {
+            email: formData.email,
+            name: formData.name,
+            analysisId: insertedData.id,
+            confirmationToken: confirmationToken,
+            confirmationUrl: finalConfirmationUrl,
+            atsScore: data.score
+        };
+        
+        console.log('🔍 DEBUG - Email Payload:', emailPayload);
+        
         const { error: emailError } = await supabase.functions.invoke('send-analysis-email', {
-            body: {
-                email: formData.email,
-                name: formData.name,
-                analysisId: insertedData.id,
-                confirmationToken: confirmationToken,
-                confirmationUrl: `${import.meta.env.VITE_SITE_URL || window.location.origin}/confirm-analysis/${confirmationToken}`,
-                atsScore: data.score
-            },
+            body: emailPayload,
         });
 
         if (emailError) {
