@@ -116,6 +116,9 @@ serve(async (req) => {
 
       // Check if this is a guest checkout
       const isGuestCheckout = session.metadata?.isGuest === 'true'
+      console.log('Session metadata:', session.metadata)
+      console.log('Is guest checkout:', isGuestCheckout)
+      console.log('Session customer email:', session.customer_details?.email)
 
       if (isGuestCheckout) {
         console.log('Processing guest checkout completion')
@@ -134,13 +137,14 @@ serve(async (req) => {
 
         let userId;
         let isNewAccount = false;
+        let randomPassword = null; // Declare outside the block
 
         if (existingUser) {
           userId = existingUser.id
           console.log(`Associating order with existing user: ${guestEmail}`)
         } else {
           // Create new user account
-          const randomPassword = Math.random().toString(36).slice(-12) + 'A1!'
+          randomPassword = Math.random().toString(36).slice(-12) + 'A1!'
 
           const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
             email: guestEmail,
@@ -161,14 +165,13 @@ serve(async (req) => {
           isNewAccount = true
           console.log(`Created new user account: ${guestEmail}`)
 
-          // Create user profile
+          // Create user profile (removed created_via field)
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
               id: userId,
               email: guestEmail,
-              role: 'user',
-              created_via: 'guest_checkout'
+              role: 'user'
             })
 
           if (profileError) {
@@ -225,16 +228,20 @@ serve(async (req) => {
 
         // Send welcome/confirmation email after successful order creation
         try {
+          const emailPayload = {
+            email: guestEmail,
+            firstName: session.metadata?.firstName || null,
+            lastName: session.metadata?.lastName || null,
+            isNewAccount: isNewAccount,
+            orderId: order.id,
+            orderTotal: `$${(session.amount_total / 100).toFixed(2)}`,
+            temporaryPassword: isNewAccount ? randomPassword : null
+          }
+          
+          console.log('Sending email with payload:', emailPayload)
+          
           await supabase.functions.invoke('send-welcome-email', {
-            body: {
-              email: guestEmail,
-              firstName: session.metadata?.firstName || null,
-              lastName: session.metadata?.lastName || null,
-              isNewAccount: isNewAccount,
-              orderId: order.id,
-              orderTotal: `$${(session.amount_total / 100).toFixed(2)}`,
-              temporaryPassword: isNewAccount ? randomPassword : null
-            }
+            body: emailPayload
           })
           console.log(`${isNewAccount ? 'Welcome' : 'Confirmation'} email sent successfully`)
         } catch (emailError) {
@@ -243,6 +250,18 @@ serve(async (req) => {
         }
       } else {
         // Regular authenticated checkout
+        console.log('Processing regular authenticated checkout')
+        console.log('Looking for order with session ID:', session.id)
+        
+        // First, let's see if we can find the order
+        const { data: existingOrder, error: findError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('stripe_checkout_session_id', session.id)
+        
+        console.log('Found orders:', existingOrder)
+        console.log('Find error:', findError)
+        
         const { data: updatedOrder, error: orderError } = await supabase
           .from('orders')
           .update({
@@ -259,6 +278,11 @@ serve(async (req) => {
         }
 
         console.log('Order updated successfully:', updatedOrder)
+        
+        // If no order was updated, this might be the issue
+        if (!updatedOrder || updatedOrder.length === 0) {
+          console.error('WARNING: No order was updated! This might be why the flow is incomplete.')
+        }
       }
     }
     // Handle payment intent succeeded (for guest checkout)

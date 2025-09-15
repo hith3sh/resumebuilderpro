@@ -153,7 +153,6 @@ serve(async (req) => {
     )
   }
 })
-
 function createEmailContent(name: string, atsScore: number, confirmationUrl: string) {
   const scoreColor = atsScore >= 75 ? '#22c55e' : atsScore >= 50 ? '#f59e0b' : '#ef4444'
   const scoreMessage = atsScore >= 75
