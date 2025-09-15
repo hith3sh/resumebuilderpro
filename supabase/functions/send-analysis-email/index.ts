@@ -63,31 +63,27 @@ serve(async (req) => {
       if (inviteError) {
         // Check if error is because user already exists
         if (inviteError.message && inviteError.message.includes('already been registered')) {
-          console.log('User exists, generating reauthentication link for resume analysis')
+          console.log('User exists, sending reset password email for resume analysis')
           
-          // User exists - use admin.generateLink with 'recovery' type to trigger "Reauthentication" template
-          const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-            type: 'recovery',
-            email: email,
-            options: {
-              redirectTo: confirmationUrl,
-              data: {
-                name: name,
-                ats_score: atsScore,
-                confirmation_token: confirmationToken,
-                analysis_id: analysisId,
-                email_type: 'resume_analysis_existing',
-                confirmation_url: confirmationUrl,
-                user_type: 'existing'
-              }
+          // User exists - use resetPasswordForEmail to trigger "Reset Password" template
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: confirmationUrl,
+            data: {
+              name: name,
+              ats_score: atsScore,
+              confirmation_token: confirmationToken,
+              analysis_id: analysisId,
+              email_type: 'resume_analysis_existing',
+              confirmation_url: confirmationUrl,
+              user_type: 'existing'
             }
           })
 
-          if (linkError) {
-            throw new Error(`Email sending failed for existing user: ${linkError.message}`)
+          if (resetError) {
+            throw new Error(`Email sending failed for existing user: ${resetError.message}`)
           }
           
-          console.log('Resume analysis email sent to existing user via Reauthentication template')
+          console.log('Resume analysis email sent to existing user via Reset Password template')
         } else {
           // Some other error occurred
           throw new Error(`Email sending failed: ${inviteError.message}`)
