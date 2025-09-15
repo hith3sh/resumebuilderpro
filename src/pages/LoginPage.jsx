@@ -92,20 +92,16 @@ const LoginPage = () => {
     setCooldown(60);
 
     try {
-      // Call your custom Edge Function instead of using Supabase's built-in method
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magic-link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ email }),
+      // Use Supabase's built-in magic link functionality directly
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/profile`
+        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send magic link');
+      if (error) {
+        throw new Error(error.message);
       }
 
       toast({
