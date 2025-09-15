@@ -63,11 +63,11 @@ serve(async (req) => {
       if (inviteError) {
         // Check if error is because user already exists
         if (inviteError.message && inviteError.message.includes('already been registered')) {
-          console.log('User exists, generating invite link for resume analysis')
+          console.log('User exists, generating reauthentication link for resume analysis')
           
-          // User exists - use admin.generateLink with 'invite' type to trigger same "Invite User" template
+          // User exists - use admin.generateLink with 'recovery' type to trigger "Reauthentication" template
           const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-            type: 'invite',
+            type: 'recovery',
             email: email,
             options: {
               redirectTo: confirmationUrl,
@@ -87,7 +87,7 @@ serve(async (req) => {
             throw new Error(`Email sending failed for existing user: ${linkError.message}`)
           }
           
-          console.log('Resume analysis email sent to existing user via Invite User template')
+          console.log('Resume analysis email sent to existing user via Reauthentication template')
         } else {
           // Some other error occurred
           throw new Error(`Email sending failed: ${inviteError.message}`)
