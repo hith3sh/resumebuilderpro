@@ -47,13 +47,14 @@ serve(async (req) => {
       const { data: existingUser, error: getUserError } = await supabase.auth.admin.getUserByEmail(email)
       
       if (existingUser && existingUser.user) {
-        // User exists - use signInWithOtp to trigger "Magic Link" template for existing users
-        console.log('User exists, sending magic link for resume analysis')
+        // User exists - use admin.generateLink with 'invite' type to trigger "Invite User" template
+        console.log('User exists, generating invite link for resume analysis')
         
-        const { data: signInData, error: emailError } = await supabase.auth.signInWithOtp({
+        const { data: linkData, error: emailError } = await supabase.auth.admin.generateLink({
+          type: 'invite',
           email: email,
           options: {
-            emailRedirectTo: confirmationUrl,
+            redirectTo: confirmationUrl,
             data: {
               name: name,
               ats_score: atsScore,
@@ -70,7 +71,7 @@ serve(async (req) => {
           throw new Error(`Email sending failed for existing user: ${emailError.message}`)
         }
         
-        console.log('Resume analysis email sent to existing user via Magic Link template')
+        console.log('Resume analysis email sent to existing user via Invite User template')
         
       } else {
         // New user - use admin.inviteUserByEmail to trigger "Invite User" template
