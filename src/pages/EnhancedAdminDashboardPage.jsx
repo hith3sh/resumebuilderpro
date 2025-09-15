@@ -243,10 +243,10 @@ const EnhancedAdminDashboardPage = () => {
     },
     {
       title: "Conversion Rate",
-      value: dashboardData.summary.total_users > 0 
-        ? `${((dashboardData.summary.completed_orders / dashboardData.summary.total_users) * 100).toFixed(1)}%`
+      value: (dashboardData.summary.total_users > 0 && dashboardData.summary.completed_orders >= 0)
+        ? `${(((dashboardData.summary.completed_orders || 0) / dashboardData.summary.total_users) * 100).toFixed(1)}%`
         : "0%",
-      change: "Orders to users ratio",
+      change: `${dashboardData.summary.completed_orders || 0} completed of ${dashboardData.summary.total_orders || 0} total orders`,
       icon: TrendingUp,
       color: "text-cyan-600"
     }
@@ -567,10 +567,10 @@ const EnhancedAdminDashboardPage = () => {
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                        <span className="text-sm font-medium">Conversion Rate</span>
+                        <span className="text-sm font-medium">Conversion Rate (users → orders)</span>
                         <span className="text-lg font-bold text-green-600">
-                          {dashboardData.summary.total_users > 0 
-                            ? `${((dashboardData.summary.completed_orders / dashboardData.summary.total_users) * 100).toFixed(1)}%`
+                          {(dashboardData.summary.total_users > 0 && dashboardData.summary.completed_orders >= 0)
+                            ? `${(((dashboardData.summary.completed_orders || 0) / dashboardData.summary.total_users) * 100).toFixed(1)}%`
                             : "0%"}
                         </span>
                       </div>
