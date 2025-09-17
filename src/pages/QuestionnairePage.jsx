@@ -45,12 +45,7 @@ const QuestionnairePage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    console.log('Input change:', { name, value, currentFormData: formData }); // Debug log
-    setFormData((prev) => {
-      const newData = { ...prev, [name]: value };
-      console.log('New form data:', newData);
-      return newData;
-    });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e) => {
@@ -140,22 +135,6 @@ const QuestionnairePage = () => {
     }
   };
 
-  const InputField = ({ id, label, icon, required, ...props }) => (
-    <div>
-      <Label htmlFor={id} className="flex items-center mb-2 text-gray-700">
-        {icon}
-        {label} {required && <span className="text-red-500 ml-1">*</span>}
-      </Label>
-      <Input
-        id={id}
-        name={id}
-        onChange={handleChange}
-        value={formData[id] || ''}
-        required={required}
-        {...props}
-      />
-    </div>
-  );
 
   return (
     <>
@@ -176,12 +155,42 @@ const QuestionnairePage = () => {
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InputField id="name" label="Full Name" icon={<User className="mr-2" />} required placeholder="John Doe" />
-              <InputField id="phone" label="Phone Number" icon={<Phone className="mr-2" />} required type="tel" placeholder="(123) 456-7890" />
+              <div>
+                <Label htmlFor="name" className="flex items-center mb-2 text-gray-700">
+                  <User className="mr-2" />
+                  Full Name <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Input id="name" name="name" onChange={handleChange} value={formData.name} required placeholder="John Doe" />
+              </div>
+              <div>
+                <Label htmlFor="phone" className="flex items-center mb-2 text-gray-700">
+                  <Phone className="mr-2" />
+                  Phone Number <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Input id="phone" name="phone" onChange={handleChange} value={formData.phone} required type="tel" placeholder="(123) 456-7890" />
+              </div>
             </div>
-            <InputField id="email" label="Email Address" icon={<Mail className="mr-2" />} required type="email" placeholder="you@example.com" />
-            <InputField id="industry" label="Target Industry" icon={<Briefcase className="mr-2" />} required placeholder="e.g., Technology, Healthcare, Finance" />
-            <InputField id="jobTitle" label="Specific Job Title" icon={<FileText className="mr-2" />} placeholder="e.g., Senior Software Engineer" />
+            <div>
+              <Label htmlFor="email" className="flex items-center mb-2 text-gray-700">
+                <Mail className="mr-2" />
+                Email Address <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Input id="email" name="email" onChange={handleChange} value={formData.email} required type="email" placeholder="you@example.com" />
+            </div>
+            <div>
+              <Label htmlFor="industry" className="flex items-center mb-2 text-gray-700">
+                <Briefcase className="mr-2" />
+                Target Industry <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Input id="industry" name="industry" onChange={handleChange} value={formData.industry} required placeholder="e.g., Technology, Healthcare, Finance" />
+            </div>
+            <div>
+              <Label htmlFor="jobTitle" className="flex items-center mb-2 text-gray-700">
+                <FileText className="mr-2" />
+                Specific Job Title
+              </Label>
+              <Input id="jobTitle" name="jobTitle" onChange={handleChange} value={formData.jobTitle} placeholder="e.g., Senior Software Engineer" />
+            </div>
             
             <div>
                 <Label htmlFor="notes" className="flex items-center mb-2 text-gray-700">
