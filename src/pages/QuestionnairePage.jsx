@@ -87,14 +87,29 @@ const QuestionnairePage = () => {
         if (user) {
             userId = user.id;
         } else {
+            // Debug: First, let's see what profiles exist in the database
+            const { data: allProfiles, error: debugError } = await supabase
+                .from('profiles')
+                .select('id, email, name')
+                .limit(10);
+
+            console.log('All profiles in database (first 10):', allProfiles);
+            console.log('Looking for email:', formData.email);
+
             // For guests, find the user profile by email
             const { data: existingProfiles, error: lookupError } = await supabase
                 .from('profiles')
-                .select('id, email')
+                .select('id, email, name, created_at')
                 .eq('email', formData.email)
                 .limit(1);
 
-            console.log('Profile lookup result:', { existingProfiles, lookupError, searchEmail: formData.email });
+            console.log('Profile lookup result:', {
+                existingProfiles,
+                lookupError,
+                searchEmail: formData.email,
+                emailType: typeof formData.email,
+                emailLength: formData.email?.length
+            });
 
             if (lookupError) {
                 console.error('Profile lookup error:', lookupError);
@@ -111,12 +126,27 @@ const QuestionnairePage = () => {
                 console.log('Found existing profile with ID:', userId);
             } else {
                 console.log('No profile found for email:', formData.email);
-                toast({
-                    title: "Account Not Found",
-                    description: "Please use the email address associated with your order, or check if you're logged in.",
-                    variant: "destructive",
-                });
-                return;
+
+                // Try case-insensitive search as backup
+                const { data: caseInsensitiveProfiles } = await supabase
+                    .from('profiles')
+                    .select('id, email, name')
+                    .ilike('email', formData.email)
+                    .limit(1);
+
+                console.log('Case-insensitive search result:', caseInsensitiveProfiles);
+
+                if (caseInsensitiveProfiles && caseInsensitiveProfiles.length > 0) {
+                    userId = caseInsensitiveProfiles[0].id;
+                    console.log('Found profile with case-insensitive search:', userId);
+                } else {
+                    toast({
+                        title: "Account Not Found",
+                        description: `No account found for ${formData.email}. Please check your email address or contact support.`,
+                        variant: "destructive",
+                    });
+                    return;
+                }
             }
         }
 
