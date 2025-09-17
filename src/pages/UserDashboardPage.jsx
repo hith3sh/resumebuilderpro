@@ -126,9 +126,14 @@ const UserDashboardPage = () => {
           </div>
         </div>
         <div className="flex flex-col space-y-2">
-          {purchase.status === 'completed' && (
+          {purchase.status === 'completed' && !profile?.name && (
             <Button size="sm" variant="outline" onClick={() => navigate('/questionnaire')}>
-              <Eye className="w-4 h-4 mr-1" /> Complete Order
+              <FileText className="w-4 h-4 mr-1" /> Complete Questionnaire
+            </Button>
+          )}
+          {purchase.status === 'completed' && profile?.name && (
+            <Button size="sm" variant="outline" disabled>
+              <Eye className="w-4 h-4 mr-1" /> Order Complete
             </Button>
           )}
         </div>
