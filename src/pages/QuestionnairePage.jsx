@@ -45,7 +45,12 @@ const QuestionnairePage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    console.log('Input change:', { name, value, currentFormData: formData }); // Debug log
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+      console.log('New form data:', newData);
+      return newData;
+    });
   };
 
   const handleFileChange = (e) => {
@@ -141,7 +146,14 @@ const QuestionnairePage = () => {
         {icon}
         {label} {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
-      <Input id={id} name={id} onChange={handleChange} value={formData[id]} required={required} {...props} />
+      <Input
+        id={id}
+        name={id}
+        onChange={handleChange}
+        value={formData[id] || ''}
+        required={required}
+        {...props}
+      />
     </div>
   );
 

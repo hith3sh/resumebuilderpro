@@ -29,7 +29,6 @@ const SuccessPage = () => {
 
       if (sessionId) {
         // For embedded checkout, we get session_id
-        console.log('Processing successful checkout with session:', sessionId);
         toast({
           title: "Payment Successful!",
           description: "Your payment has been processed successfully. We're setting up your account!",
@@ -105,13 +104,13 @@ const SuccessPage = () => {
             }
           </p>
 
-          {sessionId && (
+          {/* {sessionId && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
               <p className="text-green-800 text-sm">
                 <strong>Account Setup:</strong> {paymentIntentId ? 'Your order is linked to your account.' : 'An account has been created for you using your email. Check your inbox for login details!'}
               </p>
             </div>
-          )}
+          )} */}
 
           {isPaymentSuccess && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
