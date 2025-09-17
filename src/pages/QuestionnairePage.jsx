@@ -44,8 +44,8 @@ const QuestionnairePage = () => {
   }, [location.state, user]);
 
   const handleChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e) => {
@@ -141,7 +141,7 @@ const QuestionnairePage = () => {
         {icon}
         {label} {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
-      <Input id={id} onChange={handleChange} value={formData[id]} required={required} {...props} />
+      <Input id={id} name={id} onChange={handleChange} value={formData[id]} required={required} {...props} />
     </div>
   );
 
@@ -176,7 +176,7 @@ const QuestionnairePage = () => {
                     <StickyNote className="mr-2" />
                     Additional Notes
                 </Label>
-                <Textarea id="notes" placeholder="Anything else we should know? (e.g., career goals, specific companies)" value={formData.notes} onChange={handleChange} rows={4} />
+                <Textarea id="notes" name="notes" placeholder="Anything else we should know? (e.g., career goals, specific companies)" value={formData.notes} onChange={handleChange} rows={4} />
             </div>
 
             <div>
