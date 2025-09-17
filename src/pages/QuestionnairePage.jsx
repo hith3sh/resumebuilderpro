@@ -88,18 +88,32 @@ const QuestionnairePage = () => {
             userId = user.id;
         } else {
             // For guests, find the user profile by email
-            const { data: existingProfiles } = await supabase
+            const { data: existingProfiles, error: lookupError } = await supabase
                 .from('profiles')
-                .select('id')
+                .select('id, email')
                 .eq('email', formData.email)
                 .limit(1);
 
+            console.log('Profile lookup result:', { existingProfiles, lookupError, searchEmail: formData.email });
+
+            if (lookupError) {
+                console.error('Profile lookup error:', lookupError);
+                toast({
+                    title: "Database Error",
+                    description: "Unable to verify your account. Please try again.",
+                    variant: "destructive",
+                });
+                return;
+            }
+
             if (existingProfiles && existingProfiles.length > 0) {
                 userId = existingProfiles[0].id;
+                console.log('Found existing profile with ID:', userId);
             } else {
+                console.log('No profile found for email:', formData.email);
                 toast({
                     title: "Account Not Found",
-                    description: "Please use the email address associated with your order.",
+                    description: "Please use the email address associated with your order, or check if you're logged in.",
                     variant: "destructive",
                 });
                 return;
@@ -122,7 +136,6 @@ const QuestionnairePage = () => {
 
         // Update profile data (for both logged-in users and guests)
         const profileData = {
-            id: userId,
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
@@ -130,13 +143,23 @@ const QuestionnairePage = () => {
             job_title: formData.jobTitle,
             notes: formData.notes,
             resume_url: resumeUrl,
+            updated_at: new Date().toISOString()
         };
 
+        console.log('Updating profile for userId:', userId, 'with data:', profileData);
+
+        // Use update instead of upsert to avoid conflicts
         const { error: profileError } = await supabase
             .from('profiles')
-            .upsert(profileData, { onConflict: 'id' });
+            .update(profileData)
+            .eq('id', userId);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            console.error('Profile update error:', profileError);
+            throw profileError;
+        }
+
+        console.log('Profile updated successfully');
 
         toast({
             title: "Success!",
