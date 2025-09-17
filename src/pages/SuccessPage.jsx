@@ -134,7 +134,7 @@ const SuccessPage = () => {
           {isPaymentSuccess && !loading && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
               <p className="text-orange-800 text-sm font-medium">
-                <strong>🚨 Important:</strong> You'll be redirected to complete the questionnaire in <span className="font-bold text-lg">{countdown}</span> seconds.
+              You'll be redirected to complete the questionnaire in <span className="font-bold text-lg">{countdown}</span> seconds.
               </p>
               <p className="text-orange-700 text-sm mt-1">
                 This is required to get started on your resume!

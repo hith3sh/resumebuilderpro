@@ -102,20 +102,54 @@ Deno.serve(async (req) => {
 
       console.log('Successfully triggered Change Email template')
 
+      // Let's also try to verify the user's final state
+      const { data: finalUser } = await supabaseAdmin.auth.admin.getUserById(targetUser.id)
+      console.log('Final user state:', {
+        id: finalUser?.user?.id,
+        email: finalUser?.user?.email,
+        metadata: finalUser?.user?.user_metadata
+      })
+
       return new Response(
         JSON.stringify({
           success: true,
           message: 'Email sent using Supabase Change Email template',
           email: email,
           isNewAccount: isNewAccount,
-          method: 'supabase_change_email_template'
+          method: 'supabase_change_email_template',
+          debug: {
+            finalEmail: finalUser?.user?.email,
+            hasMetadata: !!finalUser?.user?.user_metadata
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
 
     } catch (error) {
       console.error('Failed to trigger Change Email template:', error)
-      // Continue to fallback method
+
+      // Try alternative: Password Reset template as fallback
+      try {
+        console.log('Trying password reset template as fallback')
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+          redirectTo: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/questionnaire`
+        })
+
+        if (!resetError) {
+          console.log('Successfully sent password reset email as fallback')
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'Email sent using password reset template (fallback)',
+              email: email,
+              method: 'supabase_password_reset_fallback'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      } catch (fallbackError) {
+        console.error('Fallback method also failed:', fallbackError)
+      }
     }
 
     // If we get here, the Supabase template trigger failed
