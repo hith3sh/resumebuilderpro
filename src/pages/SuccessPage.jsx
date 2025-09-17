@@ -125,18 +125,11 @@ const SuccessPage = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isPaymentSuccess ? (
-              <>
-                <Button asChild>
-                  <Link to="/questionnaire">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Complete Questionnaire
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/dashboard">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> View My Orders
-                  </Link>
-                </Button>
-              </>
+              <Button asChild>
+                <Link to="/questionnaire">
+                  <CheckCircle className="mr-2 h-4 w-4" /> Complete Questionnaire
+                </Link>
+              </Button>
             ) : (
               <>
                 <Button asChild>

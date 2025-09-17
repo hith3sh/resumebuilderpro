@@ -48,6 +48,9 @@ const EnhancedAdminDashboardPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState(30);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderProfile, setOrderProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Fetch all dashboard data
   const fetchDashboardData = useCallback(async (showRefreshing = false) => {
@@ -202,6 +205,47 @@ const EnhancedAdminDashboardPage = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleOrderClick = async (order) => {
+    if (!order.user_id) {
+      toast({
+        title: "No User Data",
+        description: "This order doesn't have an associated user profile.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSelectedOrder(order);
+    setLoadingProfile(true);
+
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', order.user_id);
+
+      if (error) throw error;
+
+      // Set profile data if found, or null if not found
+      setOrderProfile(profiles && profiles.length > 0 ? profiles[0] : null);
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      toast({
+        title: "Error Loading Profile",
+        description: error.message,
+        variant: "destructive"
+      });
+      setOrderProfile(null);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const closeOrderModal = () => {
+    setSelectedOrder(null);
+    setOrderProfile(null);
   };
 
   // Summary cards data
@@ -435,7 +479,7 @@ const EnhancedAdminDashboardPage = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {dashboardData.recentOrders.length > 0 ? dashboardData.recentOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-gray-50">
+                          <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleOrderClick(order)}>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
@@ -717,6 +761,123 @@ const EnhancedAdminDashboardPage = () => {
               <Button onClick={handleSaveChanges} disabled={isSaving}>
                 {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Order Details Dialog */}
+        <Dialog open={!!selectedOrder} onOpenChange={closeOrderModal}>
+          <DialogContent className="sm:max-w-[625px]">
+            <DialogHeader>
+              <DialogTitle>Order Details & Questionnaire</DialogTitle>
+              <DialogDescription>
+                Order information and customer questionnaire responses.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedOrder && (
+              <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Order Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-3">Order Information</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-600">Order ID:</span>
+                      <p>#{selectedOrder.id.slice(0, 8)}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Amount:</span>
+                      <p>${(selectedOrder.total_amount / 100).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Status:</span>
+                      <p>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          selectedOrder.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          selectedOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {selectedOrder.status}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Date:</span>
+                      <p>{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Questionnaire */}
+                {loadingProfile ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <span className="ml-2">Loading questionnaire data...</span>
+                  </div>
+                ) : orderProfile ? (
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h3 className="font-semibold text-lg mb-3">Questionnaire Responses</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="font-medium text-gray-600">Full Name:</span>
+                        <p>{orderProfile.name || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Email:</span>
+                        <p>{orderProfile.email || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Phone:</span>
+                        <p>{orderProfile.phone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Target Industry:</span>
+                        <p>{orderProfile.industry || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Job Title:</span>
+                        <p>{orderProfile.job_title || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Additional Notes:</span>
+                        <p className="whitespace-pre-wrap">{orderProfile.notes || 'No additional notes provided'}</p>
+                      </div>
+                      {orderProfile.resume_url && (
+                        <div>
+                          <span className="font-medium text-gray-600">Resume:</span>
+                          <p>
+                            <a
+                              href={orderProfile.resume_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              View uploaded resume
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                      {orderProfile.ats_score && (
+                        <div>
+                          <span className="font-medium text-gray-600">ATS Score:</span>
+                          <p>{orderProfile.ats_score}/100</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h3 className="font-semibold text-lg mb-2">No Questionnaire Data</h3>
+                    <p className="text-yellow-800">
+                      This customer hasn't completed the questionnaire yet. They may have made a payment but not submitted their details.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Close</Button>
+              </DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>
