@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, ShoppingBag, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,11 @@ import { useToast } from '@/components/ui/use-toast';
 
 const SuccessPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   const sessionId = searchParams.get('session_id');
   const paymentIntentId = searchParams.get('payment_intent');
@@ -22,6 +24,23 @@ const SuccessPage = () => {
       fetchOrderDetails();
     }
   }, [sessionId, paymentIntentId]);
+
+  // Auto-redirect to questionnaire after 5 seconds for payment success
+  useEffect(() => {
+    if (isPaymentSuccess && !loading) {
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            navigate('/questionnaire');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [isPaymentSuccess, loading, navigate]);
 
   const fetchOrderDetails = async () => {
     try {
@@ -112,10 +131,13 @@ const SuccessPage = () => {
             </div>
           )} */}
 
-          {isPaymentSuccess && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-blue-800 text-sm">
-                <strong>Next Steps:</strong> Please complete the questionnaire to provide us with all the details needed for your resume.
+          {isPaymentSuccess && !loading && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+              <p className="text-orange-800 text-sm font-medium">
+                <strong>🚨 Important:</strong> You'll be redirected to complete the questionnaire in <span className="font-bold text-lg">{countdown}</span> seconds.
+              </p>
+              <p className="text-orange-700 text-sm mt-1">
+                This is required to get started on your resume!
               </p>
             </div>
           )}
@@ -124,9 +146,9 @@ const SuccessPage = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isPaymentSuccess ? (
-              <Button asChild>
+              <Button asChild size="lg" className="animate-pulse">
                 <Link to="/questionnaire">
-                  <CheckCircle className="mr-2 h-4 w-4" /> Complete Questionnaire
+                  <CheckCircle className="mr-2 h-4 w-4" /> Complete Questionnaire Now
                 </Link>
               </Button>
             ) : (

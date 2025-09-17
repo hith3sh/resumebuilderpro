@@ -13,7 +13,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email } = await req.json()
+    const {
+      email,
+      firstName,
+      lastName,
+      isNewAccount,
+      orderId,
+      orderTotal,
+      temporaryPassword
+    } = await req.json()
 
     // Validate required parameters
     if (!email) {
@@ -46,14 +54,46 @@ Deno.serve(async (req) => {
         throw new Error(`User with email ${email} not found`)
       }
 
-      // Trigger the "Change Email Address" template by setting email to same value
-      // This will send the built-in Supabase email template
-      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        targetUser.id,
-        {
-          email: email // Setting to same email triggers the template
+      console.log('User found:', { id: targetUser.id, email: targetUser.email })
+      console.log('Template data to pass:', {
+        is_new_account: isNewAccount,
+        first_name: firstName || '',
+        order_id: orderId || '',
+        order_total: orderTotal || ''
+      })
+
+      // First, update user metadata with template data
+      await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+        user_metadata: {
+          ...targetUser.user_metadata,
+          is_new_account: isNewAccount,
+          first_name: firstName || '',
+          last_name: lastName || '',
+          order_id: orderId || '',
+          order_total: orderTotal || '',
+          temporary_password: temporaryPassword || ''
         }
-      )
+      })
+
+      // Create a temporary email to force a real email change
+      const tempEmail = `welcome_${Date.now()}@temp.proresumedesigns.com`
+      console.log('Updating to temp email:', tempEmail)
+
+      // Update to temp email first
+      await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+        email: tempEmail,
+        email_confirm: false // Don't require confirmation for temp email
+      })
+
+      // Small delay to ensure the update is processed
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Now update back to original email - this should trigger the Change Email template
+      console.log('Updating back to original email:', email)
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+        email: email,
+        email_confirm: true // This should trigger the email template
+      })
 
       if (updateError) {
         console.error('Error triggering Change Email template:', updateError)
@@ -67,6 +107,7 @@ Deno.serve(async (req) => {
           success: true,
           message: 'Email sent using Supabase Change Email template',
           email: email,
+          isNewAccount: isNewAccount,
           method: 'supabase_change_email_template'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

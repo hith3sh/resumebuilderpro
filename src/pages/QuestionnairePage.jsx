@@ -74,20 +74,40 @@ const QuestionnairePage = () => {
         });
         return;
     }
-    if (!user) {
-        toast({
-            title: "Authentication Error",
-            description: "You must be logged in to submit this form. Please log in and try again.",
-            variant: "destructive",
-        });
-        navigate('/login');
-        return;
-    }
+    // Allow both logged-in users and guests to submit the form
+    // For guests, we'll find/update their profile by email
 
     setIsSubmitting(true);
     
     try {
-        const filePath = `${user.id}/${Date.now()}_${resumeFile.name}`;
+        let resumeUrl = null;
+        let userId = null;
+
+        // If user is logged in, use their ID; otherwise find user by email
+        if (user) {
+            userId = user.id;
+        } else {
+            // For guests, find the user profile by email
+            const { data: existingProfiles } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', formData.email)
+                .limit(1);
+
+            if (existingProfiles && existingProfiles.length > 0) {
+                userId = existingProfiles[0].id;
+            } else {
+                toast({
+                    title: "Account Not Found",
+                    description: "Please use the email address associated with your order.",
+                    variant: "destructive",
+                });
+                return;
+            }
+        }
+
+        // Upload resume file
+        const filePath = `${userId}/${Date.now()}_${resumeFile.name}`;
         const { error: uploadError } = await supabase.storage
             .from('resumes')
             .upload(filePath, resumeFile, {
@@ -98,10 +118,11 @@ const QuestionnairePage = () => {
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage.from('resumes').getPublicUrl(filePath);
-        const resumeUrl = urlData.publicUrl;
+        resumeUrl = urlData.publicUrl;
 
+        // Update profile data (for both logged-in users and guests)
         const profileData = {
-            id: user.id,
+            id: userId,
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
@@ -114,7 +135,7 @@ const QuestionnairePage = () => {
         const { error: profileError } = await supabase
             .from('profiles')
             .upsert(profileData, { onConflict: 'id' });
-        
+
         if (profileError) throw profileError;
 
         toast({
