@@ -119,16 +119,47 @@ const QuestionnairePage = () => {
             }
         }
 
+        // Check if bucket exists first
+        const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+        console.log('Available buckets:', buckets, bucketError);
+
         // Upload resume file
         const filePath = `${userId}/${Date.now()}_${resumeFile.name}`;
-        const { error: uploadError } = await supabase.storage
+        console.log('Attempting to upload file:', {
+            filePath,
+            fileName: resumeFile.name,
+            fileSize: resumeFile.size,
+            fileType: resumeFile.type,
+            userId
+        });
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
             .from('resumes')
             .upload(filePath, resumeFile, {
                 upsert: true,
                 contentType: resumeFile.type,
             });
 
-        if (uploadError) throw uploadError;
+        console.log('Upload result:', { uploadData, uploadError });
+
+        if (uploadError) {
+            console.error('Storage upload error details:', uploadError);
+
+            // Try alternative approach without upsert
+            console.log('Trying upload without upsert...');
+            const { data: uploadData2, error: uploadError2 } = await supabase.storage
+                .from('resumes')
+                .upload(filePath, resumeFile, {
+                    contentType: resumeFile.type,
+                });
+
+            if (uploadError2) {
+                console.error('Second upload attempt failed:', uploadError2);
+                throw new Error(`File upload failed: ${uploadError.message}. Second attempt: ${uploadError2.message}`);
+            } else {
+                console.log('Second upload succeeded:', uploadData2);
+            }
+        }
 
         const { data: urlData } = supabase.storage.from('resumes').getPublicUrl(filePath);
         resumeUrl = urlData.publicUrl;

@@ -6,10 +6,14 @@
 CREATE POLICY "Allow questionnaire profile lookup by email" ON public.profiles
     FOR SELECT USING (true);
 
--- Alternative: More restrictive policy that only allows reading id and email fields
--- (Uncomment this and comment the above if you want more restrictive access)
--- CREATE POLICY "Allow questionnaire profile lookup by email" ON public.profiles
---     FOR SELECT USING (true);
+-- Storage policies for guest questionnaire uploads
+-- Allow guests to upload resumes to any folder in the resumes bucket
+CREATE POLICY "Allow questionnaire resume uploads" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = 'resumes');
 
--- Note: This policy allows reading all profiles for questionnaire lookup.
--- In production, you might want to create a more restrictive policy or use a serverless function.
+-- Allow guests to view resumes they uploaded
+CREATE POLICY "Allow questionnaire resume viewing" ON storage.objects
+    FOR SELECT USING (bucket_id = 'resumes');
+
+-- Note: These policies allow broad access for questionnaire functionality.
+-- In production, you might want to create more restrictive policies.
